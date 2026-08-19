@@ -76,10 +76,119 @@ h6 {
   animation: shimai-backdrop-in 0.2s ease-out both;
 }
 
+@keyframes shimai-sheet-up {
+  from {
+    opacity: 0.7;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimai-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-shimai-sheet-up {
+  animation: shimai-sheet-up 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-shimai-modal-in {
+  animation: shimai-modal-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes shimai-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-shimai-toast-in {
+  animation: shimai-toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.shimai-menu-fade {
+  transition:
+    opacity 160ms ease-out,
+    transform 160ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-shimai-fade-up,
   .animate-shimai-drawer-in,
-  .animate-shimai-backdrop-in {
+  .animate-shimai-backdrop-in,
+  .animate-shimai-sheet-up,
+  .animate-shimai-modal-in,
+  .animate-shimai-toast-in {
     animation: none;
   }
+
+  .shimai-menu-fade {
+    transition: none !important;
+  }
+
+  .shimai-hero-video-out,
+  .shimai-hero-static-in,
+  .shimai-hero-stage-resize {
+    transition: none !important;
+  }
+
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+}
+
+/* Hero logo video — soft edges into page background (#080808) */
+.shimai-hero-video-feather {
+  -webkit-mask-image: radial-gradient(
+    ellipse 96% 92% at 50% 50%,
+    #000 6%,
+    rgb(0 0 0 / 0.95) 28%,
+    rgb(0 0 0 / 0.72) 44%,
+    rgb(0 0 0 / 0.38) 58%,
+    rgb(0 0 0 / 0.12) 72%,
+    transparent 86%
+  );
+  mask-image: radial-gradient(
+    ellipse 96% 92% at 50% 50%,
+    #000 6%,
+    rgb(0 0 0 / 0.95) 28%,
+    rgb(0 0 0 / 0.72) 44%,
+    rgb(0 0 0 / 0.38) 58%,
+    rgb(0 0 0 / 0.12) 72%,
+    transparent 86%
+  );
+}
+
+.shimai-hero-video-out {
+  transition:
+    opacity 950ms ease-out,
+    filter 950ms ease-out,
+    transform 950ms ease-out;
+}
+
+.shimai-hero-static-in {
+  transition: opacity 1400ms ease-in;
+}
+
+.shimai-hero-stage-resize {
+  transition: min-height 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html:focus-within {
+  scroll-behavior: smooth;
 }

@@ -10,7 +10,12 @@ type GateRole = "admin" | "driver";
  * Next.js 16 Proxy: refresh session + gate /admin (admin) and /driver (driver).
  */
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  // Next.js 16: passing the full `{ request }` into next() can 404 valid
+  // app routes in `next dev`. Only forward headers if we need to.
+  const requestHeaders = new Headers(request.headers);
+  let supabaseResponse = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 
   const { url, key } = getSupabasePublicEnv();
 
@@ -24,7 +29,9 @@ export async function updateSession(request: NextRequest) {
         cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
-        supabaseResponse = NextResponse.next({ request });
+        supabaseResponse = NextResponse.next({
+          request: { headers: requestHeaders },
+        });
         cookiesToSet.forEach(({ name, value, options }) => {
           supabaseResponse.cookies.set(name, value, options);
         });

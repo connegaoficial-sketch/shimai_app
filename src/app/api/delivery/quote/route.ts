@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { getDeliveryConfigServer } from "@/lib/delivery/get-delivery-config";
-import {
-  OUT_OF_COVERAGE_MESSAGE,
-  quoteDeliveryFee,
-} from "@/lib/delivery/zones";
+import { quoteDeliveryFromSettings } from "@/lib/delivery/quote-from-settings";
+import { OUT_OF_COVERAGE_MESSAGE } from "@/lib/delivery/zones";
 
 export const runtime = "nodejs";
 
 /**
  * Public UX quote — returns fee / coverage only.
- * Never exposes kitchen_coordinates.
+ * Never exposes kitchen_coordinates. Uses the admin delivery_config (fee 0 = $0).
  */
 export async function POST(request: Request) {
   let body: { lat?: unknown; lng?: unknown };
@@ -30,14 +27,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const config = await getDeliveryConfigServer();
-    const quote = quoteDeliveryFee(config, lat, lng);
+    const quote = await quoteDeliveryFromSettings(lat, lng);
 
     if (!quote.ok) {
       return NextResponse.json(
         {
           ok: false,
-          code: "OUT_OF_COVERAGE",
+          code: quote.code,
           error: quote.message || OUT_OF_COVERAGE_MESSAGE,
         },
         { status: 200 },

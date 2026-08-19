@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireDriverClient } from "@/lib/driver/require-driver";
 import { notifyOrderInTransit } from "@/lib/driver/notify-in-transit";
+import { isInMexicoBounds } from "@/lib/delivery/mexico-bounds";
 import type { OrderStatus } from "@/types/database";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -123,6 +124,13 @@ export async function upsertDriverLocation(input: {
 
   if (!Number.isFinite(input.lat) || !Number.isFinite(input.lng)) {
     return { ok: false, error: "Coordenadas inválidas." };
+  }
+
+  if (!isInMexicoBounds(input.lat, input.lng)) {
+    return {
+      ok: false,
+      error: "Ubicación fuera de México; no se guardó.",
+    };
   }
 
   const { data: order } = await gate.supabase

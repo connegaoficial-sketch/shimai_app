@@ -22,6 +22,7 @@ export type CheckoutRequestBody = {
   delivery_notes?: string | null;
   client_phone?: string | null;
   customer_name?: string | null;
+  promo_code?: string | null;
   success_url?: string;
   cancel_url?: string;
 };
@@ -35,6 +36,9 @@ export type CheckoutSuccessResponse = {
   currency: string;
   subtotal: number;
   delivery_fee: number;
+  discount?: number;
+  promo_code?: string | null;
+  promo_label?: string | null;
   delivery_distance_km?: number;
   total: number;
   items: Array<{
@@ -52,6 +56,7 @@ export type CheckoutSuccessResponse = {
     account_number: string;
     holder_name: string;
   };
+  whatsapp_phone?: string;
   message?: string;
 };
 

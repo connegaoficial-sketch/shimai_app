@@ -63,6 +63,10 @@ export type DeliveryConfigSetting = {
   max_radius_km: number;
 };
 
+export type WhatsAppContactSetting = {
+  phone: string;
+};
+
 export type DeliveryAddress = {
   text?: string;
   full_name?: string;
@@ -227,6 +231,10 @@ export type Database = {
           delivery_notes: string | null;
           client_phone: string | null;
           stripe_session_id: string | null;
+          discount: number;
+          promo_code: string | null;
+          promo_label: string | null;
+          promo_type: string | null;
           created_at: string;
         };
         Insert: {
@@ -245,6 +253,10 @@ export type Database = {
           delivery_notes?: string | null;
           client_phone?: string | null;
           stripe_session_id?: string | null;
+          discount?: number;
+          promo_code?: string | null;
+          promo_label?: string | null;
+          promo_type?: string | null;
           created_at?: string;
         };
         Update: {
@@ -263,6 +275,10 @@ export type Database = {
           delivery_notes?: string | null;
           client_phone?: string | null;
           stripe_session_id?: string | null;
+          discount?: number;
+          promo_code?: string | null;
+          promo_label?: string | null;
+          promo_type?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -395,6 +411,30 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      quote_delivery_fee: {
+        Args: { p_lat: number; p_lng: number };
+        Returns: Json;
+      };
+      delivery_public_geo: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_public_tracker: {
+        Args: { p_order_id: string };
+        Returns: Json;
+      };
+      admin_list_team: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      admin_upsert_team_member: {
+        Args: {
+          p_email: string;
+          p_full_name: string;
+          p_role: UserRole;
+        };
+        Returns: string;
+      };
       is_admin: {
         Args: Record<string, never>;
         Returns: boolean;

@@ -48,6 +48,30 @@ function statusCopy(status: OrderStatus): string {
   }
 }
 
+function driverStatusLine(input: {
+  status: OrderStatus;
+  driverName: string | null;
+  hasDriverPin: boolean;
+}): string | null {
+  if (input.driverName) {
+    return `Repartidor: ${input.driverName}`;
+  }
+  if (
+    input.hasDriverPin ||
+    input.status === "in_transit" ||
+    input.status === "delivered"
+  ) {
+    return "Repartidor en camino";
+  }
+  if (input.status === "ready_for_pickup") {
+    return "Esperando que un repartidor tome el pedido…";
+  }
+  if (input.status === "preparing" || input.status === "confirmed") {
+    return null;
+  }
+  return "Asignando repartidor…";
+}
+
 export function TrackerClient({
   orderId,
   initialStatus,
@@ -57,8 +81,48 @@ export function TrackerClient({
 }: TrackerClientProps) {
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
   const [driver, setDriver] = useState(initialDriver);
+  const [displayDriverName, setDisplayDriverName] = useState(driverName);
 
   const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    setDisplayDriverName(driverName);
+  }, [driverName]);
+
+  useEffect(() => {
+    if (displayDriverName) return;
+
+    const shouldLoadName =
+      status === "in_transit" ||
+      status === "delivered" ||
+      driver != null ||
+      status === "ready_for_pickup";
+
+    if (!shouldLoadName) return;
+
+    let cancelled = false;
+
+    void supabase
+      .rpc("get_public_tracker", { p_order_id: orderId })
+      .then(({ data, error }) => {
+        if (cancelled || error || !data || typeof data !== "object") return;
+
+        const name = (data as { driver_name?: unknown }).driver_name;
+        if (typeof name === "string" && name.trim()) {
+          setDisplayDriverName(name.trim());
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [displayDriverName, driver, orderId, status, supabase]);
+
+  const driverLine = driverStatusLine({
+    status,
+    driverName: displayDriverName,
+    hasDriverPin: driver != null,
+  });
 
   useEffect(() => {
     const locationChannel = supabase
@@ -132,15 +196,11 @@ export function TrackerClient({
           <p className="mt-2 font-serif text-2xl text-shimai-ivory">
             {statusCopy(status)}
           </p>
-          {driverName ? (
+          {driverLine ? (
             <p className="mt-2 font-sans text-sm text-shimai-ivory/55">
-              Repartidor: {driverName}
+              {driverLine}
             </p>
-          ) : (
-            <p className="mt-2 font-sans text-sm text-shimai-ivory/45">
-              Asignando repartidor…
-            </p>
-          )}
+          ) : null}
           {status === "in_transit" ? (
             <p className="mt-3 font-sans text-xs text-shimai-gold/80">
               Pin dorado = repartidor · punto sakura = tu dirección

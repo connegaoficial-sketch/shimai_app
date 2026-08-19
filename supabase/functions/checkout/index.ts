@@ -70,6 +70,7 @@ type CheckoutRequest = {
   delivery_notes?: string | null;
   client_phone?: string | null;
   customer_name?: string | null;
+  promo_code?: string | null;
   success_url?: string;
   cancel_url?: string;
 };
@@ -92,6 +93,35 @@ type BankDetails = {
   clabe: string;
   account_number: string;
   holder_name: string;
+};
+
+type WhatsAppContact = {
+  phone: string;
+};
+
+type PromoType = "first_order" | "coupon" | "free_delivery";
+type PromoValueType = "percent" | "fixed";
+
+type Promo = {
+  id: string;
+  active: boolean;
+  type: PromoType;
+  title: string;
+  subtitle: string;
+  code: string;
+  value_type: PromoValueType;
+  value: number;
+  min_subtotal: number;
+  starts_at: string | null;
+  ends_at: string | null;
+};
+
+type AppliedPromo = {
+  discount: number;
+  deliveryFee: number;
+  promo_code: string | null;
+  promo_label: string | null;
+  promo_type: string | null;
 };
 
 type ProductRow = {
@@ -293,6 +323,195 @@ function parseDeliveryConfig(raw: unknown): DeliveryConfig | null {
   };
 }
 
+function normalizePromoCode(code: string): string {
+  return code.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+function phoneVariants(phone: string | null): string[] {
+  if (!phone) return [];
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return [];
+  const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+  const variants = new Set<string>([digits, last10]);
+  if (last10.length === 10) {
+    variants.add(`52${last10}`);
+  }
+  return [...variants];
+}
+
+function isPromoLive(promo: Promo, now = new Date()): boolean {
+  if (!promo.active) return false;
+  if (promo.starts_at) {
+    const start = new Date(promo.starts_at);
+    if (!Number.isNaN(start.getTime()) && start > now) return false;
+  }
+  if (promo.ends_at) {
+    const end = new Date(promo.ends_at);
+    if (!Number.isNaN(end.getTime()) && end < now) return false;
+  }
+  return true;
+}
+
+function parsePromos(raw: unknown): Promo[] {
+  if (!raw || typeof raw !== "object") return [];
+  const items = (raw as { items?: unknown }).items;
+  if (!Array.isArray(items)) return [];
+  const types: PromoType[] = ["first_order", "coupon", "free_delivery"];
+  const valueTypes: PromoValueType[] = ["percent", "fixed"];
+  return items.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    const type = String(row.type ?? "") as PromoType;
+    if (!types.includes(type)) return [];
+    const valueTypeRaw = String(row.value_type ?? "") as PromoValueType;
+    return [{
+      id: String(row.id ?? ""),
+      active: row.active === true,
+      type,
+      title: String(row.title ?? "").trim(),
+      subtitle: String(row.subtitle ?? "").trim(),
+      code: normalizePromoCode(String(row.code ?? "")),
+      value_type: valueTypes.includes(valueTypeRaw) ? valueTypeRaw : "percent",
+      value: Math.max(0, Number(row.value) || 0),
+      min_subtotal: Math.max(0, Number(row.min_subtotal) || 0),
+      starts_at: String(row.starts_at ?? "").trim() || null,
+      ends_at: String(row.ends_at ?? "").trim() || null,
+    }];
+  });
+}
+
+function moneyOff(promo: Promo, subtotal: number): number {
+  if (promo.type === "free_delivery") return 0;
+  if (promo.min_subtotal > 0 && subtotal < promo.min_subtotal) return 0;
+  if (promo.value_type === "percent") {
+    const pct = Math.min(promo.value, 100);
+    return roundMoney(subtotal * (pct / 100));
+  }
+  return roundMoney(Math.min(promo.value, subtotal));
+}
+
+function promoLabel(promo: Promo): string {
+  if (promo.title) return promo.title;
+  if (promo.type === "free_delivery") return "Envío gratis";
+  if (promo.type === "first_order") return "Primera compra";
+  return promo.code ? `Cupón ${promo.code}` : "Descuento";
+}
+
+async function hasPriorOrder(
+  service: SupabaseClient,
+  userId: string | null,
+  phone: string | null,
+): Promise<boolean> {
+  const filters: string[] = [];
+  if (userId) filters.push(`client_id.eq.${userId}`);
+  for (const variant of phoneVariants(phone)) {
+    filters.push(`client_phone.eq.${variant}`);
+  }
+  if (filters.length === 0) return false;
+
+  const { data, error } = await service
+    .from("orders")
+    .select("id")
+    .neq("status", "cancelled")
+    .or(filters.join(","))
+    .limit(1);
+
+  if (error) {
+    console.error("prior order lookup error", error);
+    return true;
+  }
+  return (data ?? []).length > 0;
+}
+
+async function resolvePromos(input: {
+  service: SupabaseClient;
+  subtotal: number;
+  deliveryFee: number;
+  promoCode: string | null;
+  userId: string | null;
+  phone: string | null;
+}): Promise<{ ok: true; applied: AppliedPromo } | { ok: false; error: string }> {
+  const { data: promoRow, error: promoError } = await input.service
+    .from("settings")
+    .select("value")
+    .eq("key", "promos")
+    .maybeSingle();
+
+  if (promoError) {
+    console.error("promos settings error", promoError);
+    return { ok: false, error: "Unable to load promotions" };
+  }
+
+  const live = parsePromos(promoRow?.value).filter((promo) => isPromoLive(promo));
+  const enteredCode = input.promoCode
+    ? normalizePromoCode(input.promoCode)
+    : "";
+
+  let discount = 0;
+  let deliveryFee = input.deliveryFee;
+  let promo_code: string | null = null;
+  const labels: string[] = [];
+  let promo_type: string | null = null;
+
+  if (enteredCode) {
+    const coupon = live.find((promo) =>
+      promo.type === "coupon" && promo.code === enteredCode
+    );
+    if (!coupon) {
+      return { ok: false, error: "Cupón no válido o vencido." };
+    }
+    if (coupon.min_subtotal > 0 && input.subtotal < coupon.min_subtotal) {
+      return {
+        ok: false,
+        error: `Este cupón aplica desde $${coupon.min_subtotal}.`,
+      };
+    }
+    discount = moneyOff(coupon, input.subtotal);
+    promo_code = coupon.code;
+    promo_type = "coupon";
+    labels.push(promoLabel(coupon));
+  } else {
+    const firstOrder = live.find((promo) => promo.type === "first_order");
+    if (firstOrder) {
+      const meetsMin =
+        firstOrder.min_subtotal <= 0 || input.subtotal >= firstOrder.min_subtotal;
+      if (meetsMin) {
+        const prior = await hasPriorOrder(
+          input.service,
+          input.userId,
+          input.phone,
+        );
+        if (!prior) {
+          discount = moneyOff(firstOrder, input.subtotal);
+          promo_type = "first_order";
+          labels.push(promoLabel(firstOrder));
+        }
+      }
+    }
+  }
+
+  const freeDelivery = live.find((promo) => promo.type === "free_delivery");
+  if (
+    freeDelivery &&
+    (freeDelivery.min_subtotal <= 0 || input.subtotal >= freeDelivery.min_subtotal)
+  ) {
+    deliveryFee = 0;
+    if (!promo_type) promo_type = "free_delivery";
+    labels.push(promoLabel(freeDelivery));
+  }
+
+  return {
+    ok: true,
+    applied: {
+      discount,
+      deliveryFee,
+      promo_code,
+      promo_label: labels.length > 0 ? labels.join(" · ") : null,
+      promo_type,
+    },
+  };
+}
+
 /**
  * Authoritative zone fee. Never trust client-sent delivery_fee.
  * Zones are evaluated ascending by radius_km (0→r1, r1→r2, …).
@@ -331,6 +550,7 @@ async function createStripeCheckoutSession(input: {
   orderId: string;
   lines: PricedLine[];
   deliveryFee: number;
+  discount: number;
   successUrl: string;
   cancelUrl: string;
   customerPhone?: string | null;
@@ -376,6 +596,30 @@ async function createStripeCheckoutSession(input: {
       String(toCents(input.deliveryFee)),
     );
     body.set(`line_items[${index}][quantity]`, "1");
+  }
+
+  if (input.discount > 0) {
+    const couponBody = new URLSearchParams();
+    couponBody.set("amount_off", String(toCents(input.discount)));
+    couponBody.set("currency", "mxn");
+    couponBody.set("duration", "once");
+    couponBody.set("name", "SHIMAI");
+
+    const couponResponse = await fetch("https://api.stripe.com/v1/coupons", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: couponBody,
+    });
+    const couponData = await couponResponse.json();
+    if (!couponResponse.ok || !couponData?.id) {
+      throw new Error(
+        couponData?.error?.message || "Stripe coupon creation failed",
+      );
+    }
+    body.set("discounts[0][coupon]", String(couponData.id));
   }
 
   const stripeResponse = await fetch(
@@ -584,17 +828,35 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const deliveryFee = quote.deliveryFee;
-    const totalFinal = roundMoney(subtotal + deliveryFee);
-
-    const paymentStatus = paymentStatusFor(payload.payment_method);
-    const orderStatus = orderStatusFor(payload.payment_method);
+    const deliveryFeeQuoted = quote.deliveryFee;
     const clientPhone = payload.client_phone
       ? String(payload.client_phone).trim()
       : null;
     const customerName = payload.customer_name
       ? String(payload.customer_name).trim()
       : null;
+    const promoCode = payload.promo_code
+      ? String(payload.promo_code).trim()
+      : null;
+
+    const promoResult = await resolvePromos({
+      service,
+      subtotal,
+      deliveryFee: deliveryFeeQuoted,
+      promoCode,
+      userId: user?.id ?? null,
+      phone: clientPhone,
+    });
+    if (!promoResult.ok) {
+      return jsonResponse(req, 400, { error: promoResult.error });
+    }
+
+    const deliveryFee = promoResult.applied.deliveryFee;
+    const discount = Math.min(promoResult.applied.discount, subtotal);
+    const totalFinal = roundMoney(Math.max(0, subtotal - discount) + deliveryFee);
+
+    const paymentStatus = paymentStatusFor(payload.payment_method);
+    const orderStatus = orderStatusFor(payload.payment_method);
 
     const { data: order, error: orderError } = await service
       .from("orders")
@@ -605,6 +867,10 @@ Deno.serve(async (req: Request) => {
         payment_status: paymentStatus,
         total: totalFinal,
         delivery_fee: deliveryFee,
+        discount,
+        promo_code: promoResult.applied.promo_code,
+        promo_label: promoResult.applied.promo_label,
+        promo_type: promoResult.applied.promo_type,
         delivery_lat: deliveryLat,
         delivery_lng: deliveryLng,
         delivery_distance_km: quote.distanceKm,
@@ -653,6 +919,10 @@ Deno.serve(async (req: Request) => {
       currency: "MXN",
       subtotal,
       delivery_fee: deliveryFee,
+      discount,
+      promo_code: promoResult.applied.promo_code,
+      promo_label: promoResult.applied.promo_label,
+      promo_type: promoResult.applied.promo_type,
       delivery_distance_km: quote.distanceKm,
       total: totalFinal,
       items: pricedLines,
@@ -672,6 +942,7 @@ Deno.serve(async (req: Request) => {
           orderId: order.id,
           lines: pricedLines,
           deliveryFee,
+          discount,
           successUrl,
           cancelUrl,
           customerPhone: clientPhone,
@@ -714,11 +985,19 @@ Deno.serve(async (req: Request) => {
     }
 
     if (payload.payment_method === "bank_transfer") {
-      const { data: bankRow, error: bankError } = await service
-        .from("settings")
-        .select("value")
-        .eq("key", "bank_details")
-        .maybeSingle();
+      const [{ data: bankRow, error: bankError }, { data: whatsappRow }] =
+        await Promise.all([
+          service
+            .from("settings")
+            .select("value")
+            .eq("key", "bank_details")
+            .maybeSingle(),
+          service
+            .from("settings")
+            .select("value")
+            .eq("key", "whatsapp_contact")
+            .maybeSingle(),
+        ]);
 
       if (bankError) {
         console.error("bank_details settings error", bankError);
@@ -728,6 +1007,9 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      const whatsappPhone =
+        (whatsappRow?.value as WhatsAppContact | null)?.phone?.trim() ?? "";
+
       return jsonResponse(req, 200, {
         ...baseResponse,
         bank_details: (bankRow?.value as BankDetails | null) ?? {
@@ -736,6 +1018,7 @@ Deno.serve(async (req: Request) => {
           account_number: "",
           holder_name: "",
         },
+        whatsapp_phone: whatsappPhone,
         message:
           "Orden creada. Realiza la transferencia y sube tu comprobante.",
       });

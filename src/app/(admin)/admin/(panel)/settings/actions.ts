@@ -15,6 +15,8 @@ export async function updateSetting(
     "payment_methods",
     "bank_details",
     "delivery_config",
+    "whatsapp_contact",
+    "promos",
   ]);
   if (!allowed.has(key)) {
     return { ok: false, error: "Setting no permitido." };
@@ -37,5 +39,6 @@ export async function updateSetting(
   revalidatePath("/admin/settings");
   revalidatePath("/");
   revalidatePath("/checkout");
+  revalidatePath("/confirmation");
   return { ok: true };
 }

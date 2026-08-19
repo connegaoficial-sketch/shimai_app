@@ -8,6 +8,7 @@ import {
   upsertProduct,
   type ProductInput,
 } from "@/app/(admin)/admin/(panel)/menu/actions";
+import { CategoriesAdmin } from "@/components/admin/CategoriesAdmin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +58,14 @@ export function MenuAdmin({ products, categories }: MenuAdminProps) {
     const map = new Map(categories.map((c) => [c.id, c.name]));
     return (id: string) => map.get(id) ?? "—";
   }, [categories]);
+
+  const productCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const product of products) {
+      counts[product.category_id] = (counts[product.category_id] ?? 0) + 1;
+    }
+    return counts;
+  }, [products]);
 
   const filtered = products.filter((p) =>
     categoryFilter === "all" ? true : p.category_id === categoryFilter,
@@ -148,16 +157,33 @@ export function MenuAdmin({ products, categories }: MenuAdminProps) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-10">
+      <div>
+        <h1 className="font-serif text-2xl text-shimai-ivory">Menú</h1>
+        <p className="mt-1 font-sans text-sm text-shimai-ivory/50">
+          Categorías, productos y disponibilidad
+        </p>
+      </div>
+
+      <CategoriesAdmin categories={categories} productCounts={productCounts} />
+
+      <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-serif text-2xl text-shimai-ivory">Menú</h1>
+          <h2 className="font-serif text-xl text-shimai-ivory">Productos</h2>
           <p className="mt-1 font-sans text-sm text-shimai-ivory/50">
-            Productos y disponibilidad
+            Piezas de cada grupo
           </p>
         </div>
-        <Button onClick={openCreate}>Nuevo producto</Button>
+        <Button onClick={openCreate} disabled={categories.length === 0}>
+          Nuevo producto
+        </Button>
       </div>
+      {categories.length === 0 ? (
+        <p className="font-sans text-sm text-shimai-ivory/45">
+          Crea una categoría antes de agregar productos.
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <Label htmlFor="category-filter" className="sr-only">
@@ -216,7 +242,9 @@ export function MenuAdmin({ products, categories }: MenuAdminProps) {
                     <div>
                       <p className="text-shimai-ivory">{product.name}</p>
                       {product.is_signature ? (
-                        <p className="text-[11px] text-shimai-gold">Signature</p>
+                        <p className="text-[11px] text-shimai-gold">
+                          Destacado del grupo
+                        </p>
                       ) : null}
                     </div>
                   </div>
@@ -347,15 +375,21 @@ export function MenuAdmin({ products, categories }: MenuAdminProps) {
                   label="Disponible"
                 />
               </div>
-              <div className="flex items-center justify-between gap-4 rounded-md border border-white/[0.08] px-3 py-3">
-                <Label htmlFor="is_signature">Signature</Label>
+              <div className="flex items-start justify-between gap-4 rounded-md border border-white/[0.08] px-3 py-3">
+                <div className="min-w-0">
+                  <Label htmlFor="is_signature">Destacado de este grupo</Label>
+                  <p className="mt-1 font-sans text-xs leading-relaxed text-shimai-ivory/45">
+                    Se muestra grande al abrir la categoría. Si activas otro de
+                    este grupo, este deja de ser el destacado.
+                  </p>
+                </div>
                 <Switch
                   id="is_signature"
                   checked={form.is_signature}
                   onCheckedChange={(checked) =>
                     setForm((p) => ({ ...p, is_signature: checked }))
                   }
-                  label="Signature"
+                  label="Destacado de este grupo"
                 />
               </div>
 
@@ -397,6 +431,7 @@ export function MenuAdmin({ products, categories }: MenuAdminProps) {
           </div>
         </div>
       ) : null}
+      </div>
     </div>
   );
 }

@@ -4,12 +4,25 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { AddressAutocomplete } from "@/components/public/AddressAutocomplete";
+import { CheckoutOrderSummary } from "@/components/public/CheckoutOrderSummary";
+import { DeliveryLocationPicker } from "@/components/public/DeliveryLocationPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { storeCheckoutResult } from "@/lib/checkout-session";
+import {
+  clearSavedCheckoutProfile,
+  readSavedCheckoutProfile,
+  writeSavedCheckoutProfile,
+} from "@/lib/checkout/saved-profile";
 import { OUT_OF_COVERAGE_MESSAGE } from "@/lib/delivery/zones";
 import { formatMxn } from "@/lib/format";
+import type { MenuProduct } from "@/lib/menu/get-menu-data";
+import {
+  formatPromoValue,
+  previewCheckoutTotals,
+  PROMO_CODE_STORAGE_KEY,
+  type Promo,
+} from "@/lib/promos/promos";
 import { CheckoutError, requestCheckout } from "@/lib/stripe";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
@@ -19,10 +32,12 @@ type CheckoutClientProps = {
   paymentMethods: PaymentMethodsSetting;
   supabaseUrl: string;
   anonKey: string;
+  products: MenuProduct[];
   prefill?: {
     fullName?: string | null;
     phone?: string | null;
   };
+  promos?: Promo[];
 };
 
 type DeliveryQuoteState =
@@ -50,7 +65,8 @@ const METHOD_COPY: Record<
   },
   bank_transfer: {
     title: "Transferencia Bancaria",
-    description: "Te mostramos CLABE y datos al confirmar.",
+    description:
+      "Una vez recibamos tu transferencia, las hermanas preparan tu pedido con el mismo cuidado de siempre. Suele confirmarse en poco tiempo en horario de cocina.",
   },
 };
 
@@ -91,7 +107,9 @@ export function CheckoutClient({
   paymentMethods,
   supabaseUrl,
   anonKey,
+  products,
   prefill,
+  promos = [],
 }: CheckoutClientProps) {
   const router = useRouter();
   const items = useCartStore((s) => s.items);
@@ -100,6 +118,7 @@ export function CheckoutClient({
   const [fullName, setFullName] = useState(prefill?.fullName ?? "");
   const [phone, setPhone] = useState(prefill?.phone ?? "");
   const [addressText, setAddressText] = useState("");
+  const [streetNumber, setStreetNumber] = useState("");
   const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
   const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
   const [quote, setQuote] = useState<DeliveryQuoteState>({ status: "idle" });
@@ -108,12 +127,71 @@ export function CheckoutClient({
   const [error, setError] = useState<string | null>(null);
   const [outOfCoverage, setOutOfCoverage] = useState(false);
   const [pending, setPending] = useState(false);
+  const [rememberDetails, setRememberDetails] = useState(true);
+  const [usingSavedAddress, setUsingSavedAddress] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+
+  useEffect(() => {
+    const saved = readSavedCheckoutProfile();
+    if (!saved) return;
+
+    if (!prefill?.fullName?.trim()) {
+      setFullName(saved.fullName);
+    }
+    if (!prefill?.phone?.trim()) {
+      setPhone(saved.phone);
+    }
+
+    setAddressText(saved.addressText);
+    setStreetNumber(saved.streetNumber);
+    setDeliveryLat(saved.deliveryLat);
+    setDeliveryLng(saved.deliveryLng);
+    setReferences(saved.references);
+    setUsingSavedAddress(true);
+  }, [prefill?.fullName, prefill?.phone]);
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(PROMO_CODE_STORAGE_KEY);
+      if (stored) setPromoCode(stored);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const enabledMethods = useMemo(() => {
     return (Object.keys(METHOD_COPY) as PaymentMethod[]).filter(
       (method) => paymentMethods[method],
     );
   }, [paymentMethods]);
+
+  const productMap = useMemo(
+    () => new Map(products.map((product) => [product.id, product])),
+    [products],
+  );
+
+  const summary = useMemo(() => {
+    const lines = items.map((item) => {
+      const product = productMap.get(item.productId);
+      const unitPrice = product ? Number(product.price) : 0;
+      return {
+        id: item.productId,
+        name: product?.name ?? "Producto",
+        quantity: item.quantity,
+        lineTotal: unitPrice * item.quantity,
+      };
+    });
+    const subtotal = lines.reduce((sum, line) => sum + line.lineTotal, 0);
+    const deliveryFee = quote.status === "ok" ? quote.deliveryFee : null;
+    const preview = previewCheckoutTotals({
+      subtotal,
+      deliveryFee,
+      promos,
+      promoCode,
+    });
+
+    return { lines, subtotal, ...preview };
+  }, [items, productMap, promoCode, promos, quote]);
 
   useEffect(() => {
     if (deliveryLat == null || deliveryLng == null) {
@@ -151,6 +229,56 @@ export function CheckoutClient({
     deliveryLat == null ||
     deliveryLng == null;
 
+  function saveProfileForNextOrder() {
+    if (!rememberDetails) {
+      clearSavedCheckoutProfile();
+      return;
+    }
+    if (deliveryLat == null || deliveryLng == null) return;
+
+    writeSavedCheckoutProfile({
+      fullName: fullName.trim(),
+      phone: phone.trim(),
+      addressText: addressText.trim(),
+      streetNumber: streetNumber.trim(),
+      deliveryLat,
+      deliveryLng,
+      references: references.trim(),
+    });
+  }
+
+  function clearSavedAddress() {
+    clearSavedCheckoutProfile();
+    setAddressText("");
+    setStreetNumber("");
+    setDeliveryLat(null);
+    setDeliveryLng(null);
+    setReferences("");
+    setQuote({ status: "idle" });
+    setOutOfCoverage(false);
+    setUsingSavedAddress(false);
+    setError(null);
+  }
+
+  function startNewAddress() {
+    setAddressText("");
+    setStreetNumber("");
+    setDeliveryLat(null);
+    setDeliveryLng(null);
+    setReferences("");
+    setQuote({ status: "idle" });
+    setOutOfCoverage(false);
+    setUsingSavedAddress(false);
+    setError(null);
+  }
+
+  function formatDeliveryAddress() {
+    const street = addressText.trim();
+    const number = streetNumber.trim();
+    if (!number) return street;
+    return `${street} ${number}`;
+  }
+
   function goToPayment(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
@@ -160,7 +288,9 @@ export function CheckoutClient({
       return;
     }
     if (deliveryLat == null || deliveryLng == null) {
-      setError("Selecciona una dirección de la lista para ubicar tu zona.");
+      setError(
+        "Confirma tu ubicación: elige una sugerencia o marca el pin en el mapa.",
+      );
       return;
     }
     if (items.length === 0) {
@@ -209,9 +339,10 @@ export function CheckoutClient({
           client_phone: phone.trim(),
           customer_name: fullName.trim(),
           delivery_notes: notesParts.length > 0 ? notesParts.join(" · ") : null,
-          delivery_address: addressText.trim(),
+          delivery_address: formatDeliveryAddress(),
           delivery_lat: deliveryLat,
           delivery_lng: deliveryLng,
+          promo_code: promoCode.trim() || null,
           success_url: `${origin}/confirmation?stripe=1`,
           cancel_url: `${origin}/checkout?cancelled=1`,
         },
@@ -221,6 +352,7 @@ export function CheckoutClient({
         ...result,
         customer_name: fullName.trim(),
       });
+      saveProfileForNextOrder();
       clearCart();
 
       if (method === "card_online" && result.checkout_url) {
@@ -301,8 +433,47 @@ export function CheckoutClient({
         </p>
       ) : null}
 
+      {summary.lines.length > 0 ? (
+        <div className="mb-6">
+          <CheckoutOrderSummary
+            lines={summary.lines}
+            subtotal={summary.subtotal}
+            deliveryFee={summary.deliveryFee}
+            discount={summary.discount}
+            promoLabel={summary.promoLabel}
+            total={summary.total}
+            couponInvalid={summary.couponInvalid}
+          />
+        </div>
+      ) : null}
+
       {step === 1 ? (
         <form onSubmit={goToPayment} className="space-y-4">
+          {usingSavedAddress ? (
+            <div className="rounded-md border border-shimai-gold/25 bg-shimai-gold/10 px-4 py-3">
+              <p className="font-sans text-sm text-shimai-ivory/85">
+                ¡Hola de nuevo! Usamos tu última dirección. ¿Algo cambió? Puedes
+                editarla aquí.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={startNewAddress}
+                  className="font-sans text-xs text-shimai-gold underline-offset-2 hover:underline"
+                >
+                  Usar otra dirección
+                </button>
+                <button
+                  type="button"
+                  onClick={clearSavedAddress}
+                  className="font-sans text-xs text-shimai-ivory/45 underline-offset-2 hover:text-shimai-ivory/70 hover:underline"
+                >
+                  Borrar datos guardados
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           <label className="block space-y-2">
             <span className="font-sans text-xs uppercase tracking-[0.16em] text-shimai-ivory/50">
               Nombre
@@ -332,23 +503,29 @@ export function CheckoutClient({
             <span className="font-sans text-xs uppercase tracking-[0.16em] text-shimai-ivory/50">
               Dirección de entrega
             </span>
-            <AddressAutocomplete
-              value={addressText}
-              placeholder="Escribe calle y número…"
-              onChangeText={(text) => {
+            <DeliveryLocationPicker
+              addressText={addressText}
+              streetNumber={streetNumber}
+              hasCoordinates={deliveryLat != null && deliveryLng != null}
+              onAddressTextChange={(text) => {
                 setAddressText(text);
+                setUsingSavedAddress(false);
+              }}
+              onStreetNumberChange={setStreetNumber}
+              onLocationClear={() => {
                 setDeliveryLat(null);
                 setDeliveryLng(null);
                 setQuote({ status: "idle" });
                 setOutOfCoverage(false);
-                setError(null);
+                setUsingSavedAddress(false);
               }}
-              onSelect={(place) => {
-                setAddressText(place.label);
-                setDeliveryLat(place.lat);
-                setDeliveryLng(place.lng);
+              onLocationSelect={(location) => {
+                setAddressText(location.label);
+                setDeliveryLat(location.lat);
+                setDeliveryLng(location.lng);
                 setOutOfCoverage(false);
                 setError(null);
+                setUsingSavedAddress(false);
               }}
             />
             {quote.status === "loading" ? (
@@ -358,13 +535,13 @@ export function CheckoutClient({
             ) : null}
             {quote.status === "ok" ? (
               <p className="font-sans text-xs text-shimai-gold/90">
-                Envío estimado {formatMxn(quote.deliveryFee)} (lo confirma el
-                servidor al pagar)
+                Zona confirmada. El envío ya está en el total de arriba.
               </p>
             ) : null}
             {quote.status === "idle" ? (
               <p className="font-sans text-xs text-shimai-ivory/40">
-                Elige una sugerencia del autocompletado para validar tu zona.
+                Elige una sugerencia o confirma tu pin en el mapa para validar
+                tu zona.
               </p>
             ) : null}
           </div>
@@ -389,6 +566,22 @@ export function CheckoutClient({
             />
           </label>
 
+          <label className="flex cursor-pointer items-start gap-3 rounded-md border border-white/[0.06] px-3 py-3">
+            <input
+              type="checkbox"
+              checked={rememberDetails}
+              onChange={(e) => setRememberDetails(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-shimai-gold"
+            />
+            <span className="font-sans text-sm leading-relaxed text-shimai-ivory/70">
+              Recordar mis datos en este dispositivo para pedir más rápido la
+              próxima vez.
+              <span className="mt-1 block text-xs text-shimai-ivory/40">
+                Se guardan solo en este celular o computadora.
+              </span>
+            </span>
+          </label>
+
           <Button
             type="submit"
             variant="primary"
@@ -408,9 +601,50 @@ export function CheckoutClient({
       ) : (
         <div className="space-y-3">
           <p className="mb-4 font-sans text-sm text-shimai-ivory/55">
-            El total y la tarifa de envío los confirma el servidor. Elige cómo
-            quieres pagar.
+            Elige cómo quieres pagar {summary.total != null ? formatMxn(summary.total) : "tu pedido"}.
           </p>
+
+          {promos.length > 0 ? (
+            <div className="mb-4 space-y-3 border border-white/[0.06] px-4 py-4">
+              <p className="font-sans text-[10px] uppercase tracking-[0.2em] text-shimai-gold/80">
+                Oferta de la casa
+              </p>
+              {promos.map((promo) => (
+                <p
+                  key={promo.id}
+                  className="font-sans text-xs leading-relaxed text-shimai-ivory/55"
+                >
+                  {promo.title || formatPromoValue(promo)}
+                  {promo.type === "first_order"
+                    ? " · se aplica sola en tu primera compra"
+                    : ""}
+                </p>
+              ))}
+              <label className="block space-y-2">
+                <span className="font-sans text-xs uppercase tracking-[0.16em] text-shimai-ivory/50">
+                  Código de cupón
+                </span>
+                <Input
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder="Opcional"
+                  autoComplete="off"
+                />
+              </label>
+            </div>
+          ) : (
+            <label className="mb-4 block space-y-2">
+              <span className="font-sans text-xs uppercase tracking-[0.16em] text-shimai-ivory/50">
+                Código de cupón
+              </span>
+              <Input
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                placeholder="Opcional"
+                autoComplete="off"
+              />
+            </label>
+          )}
 
           {enabledMethods.map((method) => {
             const copy = METHOD_COPY[method];

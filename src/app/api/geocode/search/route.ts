@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { getDeliveryConfigServer } from "@/lib/delivery/get-delivery-config";
+import { DEFAULT_DELIVERY_CONFIG } from "@/lib/delivery/default-config";
+import { getDeliveryPublicGeo } from "@/lib/delivery/quote-from-settings";
+import {
+  isInMexicoBounds,
+  MEXICO_PHOTON_BBOX,
+} from "@/lib/delivery/mexico-bounds";
 
 export const runtime = "nodejs";
 
@@ -56,17 +61,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ results: [] });
   }
 
-  let kitchenLat = 19.432608;
-  let kitchenLng = -99.133209;
-  let maxRadiusKm = 8;
+  let kitchenLat = DEFAULT_DELIVERY_CONFIG.kitchen_coordinates.lat;
+  let kitchenLng = DEFAULT_DELIVERY_CONFIG.kitchen_coordinates.lng;
+  let maxRadiusKm = DEFAULT_DELIVERY_CONFIG.max_radius_km;
 
-  try {
-    const config = await getDeliveryConfigServer();
-    kitchenLat = config.kitchen_coordinates.lat;
-    kitchenLng = config.kitchen_coordinates.lng;
-    maxRadiusKm = Math.max(config.max_radius_km * 2.5, 5);
-  } catch {
-    // Fall back to CDMX bias if settings unavailable
+  const geo = await getDeliveryPublicGeo();
+  if (geo) {
+    kitchenLat = geo.lat;
+    kitchenLng = geo.lng;
+    maxRadiusKm = Math.max(geo.maxRadiusKm * 2.5, 5);
   }
 
   const { dLat, dLng } = degDeltaForKm(maxRadiusKm, kitchenLat);
@@ -89,6 +92,7 @@ export async function GET(request: Request) {
   photonUrl.searchParams.set("limit", "7");
   photonUrl.searchParams.set("lat", String(kitchenLat));
   photonUrl.searchParams.set("lon", String(kitchenLng));
+  photonUrl.searchParams.set("bbox", MEXICO_PHOTON_BBOX);
 
   try {
     const photonRes = await fetch(photonUrl.toString(), {
@@ -105,6 +109,11 @@ export async function GET(request: Request) {
           if (!coords || coords.length < 2) return null;
           const [lng, lat] = coords;
           if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+          if (!isInMexicoBounds(lat, lng)) return null;
+          const country = feature.properties?.country?.toLowerCase();
+          if (country && country !== "mexico" && country !== "méxico") {
+            return null;
+          }
           return {
             id: `photon-${feature.properties?.osm_id ?? `${lat},${lng}`}`,
             label: formatPhotonLabel(feature),
@@ -144,12 +153,14 @@ export async function GET(request: Request) {
   }
 
   const data = (await response.json()) as NominatimResult[];
-  const results = data.map((item) => ({
-    id: String(item.place_id),
-    label: item.display_name,
-    lat: Number(item.lat),
-    lng: Number(item.lon),
-  }));
+  const results = data
+    .map((item) => ({
+      id: String(item.place_id),
+      label: item.display_name,
+      lat: Number(item.lat),
+      lng: Number(item.lon),
+    }))
+    .filter((item) => isInMexicoBounds(item.lat, item.lng));
 
   return NextResponse.json({ results });
 }

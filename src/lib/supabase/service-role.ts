@@ -8,7 +8,7 @@ import type { Database } from "@/types/database";
  */
 export function createServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().replace(/\r/g, "");
 
   if (!url || !key) {
     throw new Error(

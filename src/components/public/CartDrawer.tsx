@@ -137,8 +137,7 @@ export function CartDrawer({ open, onClose, products }: CartDrawerProps) {
 
           {items.length > 0 ? (
             <p className="mt-6 font-sans text-[11px] leading-relaxed text-shimai-ivory/35">
-              Los precios mostrados son de referencia. El total final lo calcula
-              el backend al confirmar tu orden.
+              El total final se confirma al completar tu pedido.
             </p>
           ) : null}
         </div>

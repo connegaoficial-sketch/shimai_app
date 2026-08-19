@@ -35,7 +35,7 @@ export function DriverOrderDetail({
   const [status, setStatus] = useState(order.status);
 
   const gpsActive = status === "in_transit";
-  useDriverGpsPush({ orderId: order.id, active: gpsActive });
+  const gpsWarning = useDriverGpsPush({ orderId: order.id, active: gpsActive });
 
   const collectOnDelivery =
     order.payment_method === "cash" ||
@@ -135,9 +135,19 @@ export function DriverOrderDetail({
       </section>
 
       {gpsActive ? (
-        <p className="rounded-md border border-shimai-gold/30 bg-shimai-gold/10 px-3 py-3 font-sans text-sm text-shimai-gold">
-          GPS activo — compartiendo ubicación cada 5s
-        </p>
+        <div className="space-y-2">
+          <p className="rounded-md border border-shimai-gold/30 bg-shimai-gold/10 px-3 py-3 font-sans text-sm text-shimai-gold">
+            GPS activo — compartiendo ubicación cada 5s
+          </p>
+          {gpsWarning ? (
+            <p
+              className="rounded-md border border-seal-red/40 bg-seal-red/10 px-3 py-3 font-sans text-sm text-seal-red"
+              role="alert"
+            >
+              {gpsWarning}
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       <p className="break-all font-sans text-[11px] text-shimai-ivory/35">

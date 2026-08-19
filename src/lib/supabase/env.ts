@@ -26,3 +26,11 @@ export function getSupabasePublicEnv(): SupabasePublicEnv {
 
   return { url, key };
 }
+
+/** True when a real JWT service_role key is present (not a .env.example placeholder). */
+export function isServiceRoleKeyConfigured(): boolean {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!key || !key.startsWith("eyJ")) return false;
+  if (key.includes("...")) return false;
+  return key.length >= 120;
+}

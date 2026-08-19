@@ -1,12 +1,15 @@
+import { DEFAULT_WHATSAPP_CONTACT } from "@/lib/contact/whatsapp";
 import { SettingsAdmin } from "@/components/admin/SettingsAdmin";
+import { DEFAULT_DELIVERY_CONFIG } from "@/lib/delivery/default-config";
 import { normalizeDeliveryConfig } from "@/lib/delivery/zones";
 import { createClient } from "@/lib/supabase/server";
 import type {
   BankDetailsSetting,
   DeliveryConfigSetting,
   PaymentMethodsSetting,
+  WhatsAppContactSetting,
 } from "@/types/database";
-
+import { DEFAULT_PROMOS, parsePromosSetting } from "@/lib/promos/promos";
 const DEFAULT_PAYMENTS: PaymentMethodsSetting = {
   card_online: true,
   cash: true,
@@ -21,15 +24,7 @@ const DEFAULT_BANK: BankDetailsSetting = {
   holder_name: "",
 };
 
-const DEFAULT_DELIVERY: DeliveryConfigSetting = {
-  kitchen_coordinates: { lat: 19.432608, lng: -99.133209 },
-  zones: [
-    { radius_km: 1, fee: 30 },
-    { radius_km: 2, fee: 60 },
-    { radius_km: 3, fee: 90 },
-  ],
-  max_radius_km: 3,
-};
+const DEFAULT_DELIVERY = DEFAULT_DELIVERY_CONFIG;
 
 export default async function AdminSettingsPage() {
   const supabase = await createClient();
@@ -37,7 +32,13 @@ export default async function AdminSettingsPage() {
   const { data, error } = await supabase
     .from("settings")
     .select("key, value")
-    .in("key", ["payment_methods", "bank_details", "delivery_config"]);
+    .in("key", [
+      "payment_methods",
+      "bank_details",
+      "delivery_config",
+      "whatsapp_contact",
+      "promos",
+    ]);
 
   if (error) {
     throw new Error(`Failed to load settings: ${error.message}`);
@@ -59,6 +60,11 @@ export default async function AdminSettingsPage() {
         normalizeDeliveryConfig(byKey.get("delivery_config")) ??
         DEFAULT_DELIVERY
       }
+      whatsappContact={
+        (byKey.get("whatsapp_contact") as WhatsAppContactSetting | undefined) ??
+        DEFAULT_WHATSAPP_CONTACT
+      }
+      promos={parsePromosSetting(byKey.get("promos")) ?? DEFAULT_PROMOS}
     />
   );
 }

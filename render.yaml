@@ -1,0 +1,45 @@
+# SHIMAI — Render Blueprint
+# Dashboard → New → Blueprint → this repo.
+# After first deploy, set Edge Function secrets in Supabase:
+#   SHIMAI_APP_URL = https://<this-service>.onrender.com
+#   SHIMAI_ALLOWED_ORIGINS = https://<this-service>.onrender.com
+
+services:
+  - type: web
+    name: shimai
+    runtime: node
+    region: ohio
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=1536
+
+      - key: SHIMAI_APP_URL
+        fromService:
+          name: shimai
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_SITE_URL
+        fromService:
+          name: shimai
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://ikxbuqebgbeciznedgkj.supabase.co
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlreGJ1cWViZ2JlY2l6bmVkZ2tqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkzMDYwOTksImV4cCI6MjA4NDg4MjA5OX0.cGi9MEYceZzewsqltnz7nKBjM5ZKW0p3aZMxcgF0uz8
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_71ulZwafUKOO3MUvkEyszg_-pB3yWu2
+
+      # Prompted in Render on first Blueprint apply. Copy from
+      # Supabase → Project Settings → API → service_role (JWT, starts with eyJ).
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

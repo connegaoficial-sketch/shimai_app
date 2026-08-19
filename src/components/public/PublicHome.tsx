@@ -1,37 +1,40 @@
-"use client";
-
+import { CartToast } from "@/components/public/CartToast";
+import { LandingHero } from "@/components/public/LandingHero";
 import { MenuView } from "@/components/public/MenuView";
+import { PromoBanner } from "@/components/public/PromoBanner";
+import { SiteFooter } from "@/components/public/SiteFooter";
 import { SiteHeader } from "@/components/public/SiteHeader";
+import { SistersStory } from "@/components/public/SistersStory";
+import { WhatsAppFab } from "@/components/public/WhatsAppLink";
 import type {
   MenuCategory,
   MenuProduct,
 } from "@/lib/menu/get-menu-data";
+import type { Promo } from "@/lib/promos/promos";
 
 type PublicHomeProps = {
   categories: MenuCategory[];
   products: MenuProduct[];
+  whatsappPhone: string;
+  promos: Promo[];
 };
 
-export function PublicHome({ categories, products }: PublicHomeProps) {
+export function PublicHome({
+  categories,
+  products,
+  whatsappPhone,
+  promos,
+}: PublicHomeProps) {
   return (
     <>
       <SiteHeader products={products} />
-      <div className="relative overflow-hidden border-b border-white/[0.05]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(201,164,92,0.14),transparent_55%)]" />
-        <div className="relative mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:px-6 sm:py-14">
-          <p className="font-sans text-[11px] uppercase tracking-[0.3em] text-shimai-gold">
-            Dark kitchen · Las hermanas
-          </p>
-          <h1 className="max-w-xl font-serif text-5xl leading-[0.95] text-shimai-ivory sm:text-6xl">
-            SHIMAI
-          </h1>
-          <p className="max-w-md font-sans text-sm leading-relaxed text-shimai-ivory/55">
-            Dos hermanas. Un menú. Intensidad de Ane, frescura de Imōto, y lo
-            que crean juntas.
-          </p>
-        </div>
-      </div>
+      <LandingHero />
+      <PromoBanner promos={promos} />
+      <SistersStory />
       <MenuView categories={categories} products={products} />
+      <SiteFooter />
+      <CartToast />
+      <WhatsAppFab phone={whatsappPhone} />
     </>
   );
 }

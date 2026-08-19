@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { CheckoutClient } from "@/components/public/CheckoutClient";
+import { getMenuData } from "@/lib/menu/get-menu-data";
+import { getLivePromos } from "@/lib/promos/get-active-promos";
 import { getSupabasePublicEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentMethodsSetting } from "@/types";
@@ -18,13 +20,15 @@ export default async function CheckoutPage() {
   const supabase = await createClient();
   const { url: supabaseUrl, key: anonKey } = getSupabasePublicEnv();
 
-  const [{ data: paymentRow }, authResult] = await Promise.all([
+  const [{ data: paymentRow }, authResult, livePromos, menu] = await Promise.all([
     supabase
       .from("settings")
       .select("value")
       .eq("key", "payment_methods")
       .maybeSingle(),
     supabase.auth.getUser(),
+    getLivePromos(),
+    getMenuData(),
   ]);
 
   const paymentMethods =
@@ -59,7 +63,9 @@ export default async function CheckoutPage() {
         paymentMethods={paymentMethods}
         supabaseUrl={supabaseUrl}
         anonKey={anonKey}
+        products={menu.products}
         prefill={prefill}
+        promos={livePromos}
       />
     </main>
   );

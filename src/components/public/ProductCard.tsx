@@ -6,20 +6,23 @@ import { Button } from "@/components/ui/button";
 import { formatMxn } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
+import { useCartUiStore } from "@/stores/cartUiStore";
 import type { MenuProduct } from "@/lib/menu/get-menu-data";
 
 type ProductCardProps = {
   product: MenuProduct;
   accent?: "gold" | "sakura";
+  onOpenDetail?: () => void;
 };
 
-export function ProductCard({ product, accent = "gold" }: ProductCardProps) {
+export function ProductCard({ product, accent = "gold", onOpenDetail }: ProductCardProps) {
   const quantity =
     useCartStore(
       (s) => s.items.find((i) => i.productId === product.id)?.quantity ?? 0,
     );
   const addItem = useCartStore((s) => s.addItem);
   const setQuantity = useCartStore((s) => s.setQuantity);
+  const notifyAdded = useCartUiStore((s) => s.notifyAdded);
 
   const accentText =
     accent === "sakura" ? "text-shimai-sakura" : "text-shimai-gold";
@@ -33,7 +36,12 @@ export function ProductCard({ product, accent = "gold" }: ProductCardProps) {
         "border-white/[0.06] hover:border-shimai-gold/25",
       )}
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-shimai-black">
+      <button
+        type="button"
+        onClick={onOpenDetail}
+        aria-label={`Ver ${product.name}`}
+        className="relative aspect-[4/3] w-full overflow-hidden bg-shimai-black text-left"
+      >
         {product.image_url ? (
           <Image
             src={product.image_url}
@@ -48,17 +56,23 @@ export function ProductCard({ product, accent = "gold" }: ProductCardProps) {
           </div>
         )}
 
+        <span className="pointer-events-none absolute inset-0 bg-shimai-black/0 transition-colors group-hover:bg-shimai-black/15" />
+
+        <span className="pointer-events-none absolute bottom-3 right-3 border border-white/10 bg-shimai-black/75 px-2 py-1 font-sans text-[10px] uppercase tracking-[0.16em] text-shimai-ivory/75 opacity-100 backdrop-blur-sm sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+          Ver
+        </span>
+
         {product.is_signature ? (
           <span
             className={cn(
-              "absolute left-3 top-3 border bg-shimai-black/80 px-2 py-1 font-sans text-[10px] uppercase tracking-[0.18em] text-shimai-gold backdrop-blur-sm",
+              "pointer-events-none absolute left-3 top-3 border bg-shimai-black/80 px-2 py-1 font-sans text-[10px] uppercase tracking-[0.18em] text-shimai-gold backdrop-blur-sm",
               accentBorder,
             )}
           >
             Shimai Signature
           </span>
         ) : null}
-      </div>
+      </button>
 
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="space-y-1">
@@ -82,7 +96,10 @@ export function ProductCard({ product, accent = "gold" }: ProductCardProps) {
               variant="ghost"
               size="sm"
               className="border border-shimai-ivory/15 px-3 text-shimai-ivory hover:border-shimai-gold/40 hover:text-shimai-gold"
-              onClick={() => addItem(product.id, 1)}
+              onClick={() => {
+                addItem(product.id, 1);
+                notifyAdded(product.name);
+              }}
             >
               Agregar
             </Button>

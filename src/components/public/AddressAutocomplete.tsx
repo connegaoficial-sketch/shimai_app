@@ -16,6 +16,7 @@ type AddressAutocompleteProps = {
   value: string;
   onChangeText: (text: string) => void;
   onSelect: (place: GeocodeSuggestion) => void;
+  onNoResults?: () => void;
   disabled?: boolean;
   placeholder?: string;
 };
@@ -24,6 +25,7 @@ export function AddressAutocomplete({
   value,
   onChangeText,
   onSelect,
+  onNoResults,
   disabled,
   placeholder = "Busca tu dirección…",
 }: AddressAutocompleteProps) {
@@ -63,6 +65,9 @@ export function AddressAutocomplete({
         setSuggestions(data.results ?? []);
         setSearched(true);
         setOpen(true);
+        if ((data.results ?? []).length === 0) {
+          onNoResults?.();
+        }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           setSuggestions([]);
@@ -108,7 +113,7 @@ export function AddressAutocomplete({
       ) : null}
       {!loading && searched && open && suggestions.length === 0 ? (
         <p className="mt-1 font-sans text-[11px] text-shimai-ivory/45">
-          Sin coincidencias. Prueba calle, número y colonia.
+          Sin coincidencias. Puedes ubicar tu entrega en el mapa abajo.
         </p>
       ) : null}
       {open && suggestions.length > 0 ? (

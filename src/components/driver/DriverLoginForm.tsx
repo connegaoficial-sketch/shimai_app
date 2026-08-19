@@ -31,7 +31,14 @@ export function DriverLoginForm({ nextPath }: DriverLoginFormProps) {
     });
 
     if (signInError) {
-      setError(signInError.message);
+      const msg = signInError.message.toLowerCase();
+      if (msg.includes("invalid login credentials")) {
+        setError(
+          "Correo o contraseña incorrectos. Si te acaban de dar acceso, la contraseña no cambió — pide que la reseteen en Supabase o usa la que ya tenías.",
+        );
+      } else {
+        setError(signInError.message);
+      }
       setLoading(false);
       return;
     }

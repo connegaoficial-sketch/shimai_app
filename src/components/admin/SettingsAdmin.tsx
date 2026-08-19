@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { updateSetting } from "@/app/(admin)/admin/(panel)/settings/actions";
+import { PromosSettingsSection } from "@/components/admin/PromosSettingsSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,12 +14,19 @@ import type {
   DeliveryConfigSetting,
   DeliveryZone,
   PaymentMethodsSetting,
+  WhatsAppContactSetting,
 } from "@/types/database";
+import {
+  parsePromosSetting,
+  type PromosSetting,
+} from "@/lib/promos/promos";
 
 type SettingsAdminProps = {
   paymentMethods: PaymentMethodsSetting;
   bankDetails: BankDetailsSetting;
   deliveryConfig: DeliveryConfigSetting;
+  whatsappContact: WhatsAppContactSetting;
+  promos: PromosSetting;
 };
 
 type ZoneDraft = {
@@ -37,10 +45,14 @@ export function SettingsAdmin({
   paymentMethods: initialPayments,
   bankDetails: initialBank,
   deliveryConfig: initialDelivery,
+  whatsappContact: initialWhatsApp,
+  promos: initialPromos,
 }: SettingsAdminProps) {
   const router = useRouter();
   const [payments, setPayments] = useState(initialPayments);
   const [bank, setBank] = useState(initialBank);
+  const [whatsappPhone, setWhatsappPhone] = useState(initialWhatsApp.phone);
+  const [promos, setPromos] = useState(initialPromos);
   const [kitchenLat, setKitchenLat] = useState(
     String(initialDelivery.kitchen_coordinates.lat),
   );
@@ -58,8 +70,18 @@ export function SettingsAdmin({
   const [pending, startTransition] = useTransition();
 
   function save(
-    key: "payment_methods" | "bank_details" | "delivery_config",
-    value: PaymentMethodsSetting | BankDetailsSetting | DeliveryConfigSetting,
+    key:
+      | "payment_methods"
+      | "bank_details"
+      | "delivery_config"
+      | "whatsapp_contact"
+      | "promos",
+    value:
+      | PaymentMethodsSetting
+      | BankDetailsSetting
+      | DeliveryConfigSetting
+      | WhatsAppContactSetting
+      | PromosSetting,
   ) {
     setError(null);
     setMessage(null);
@@ -131,7 +153,7 @@ export function SettingsAdmin({
       <div>
         <h1 className="font-serif text-2xl text-shimai-ivory">Configuración</h1>
         <p className="mt-1 font-sans text-sm text-shimai-ivory/50">
-          Métodos de pago, banco y zonas de envío
+          Métodos de pago, banco, WhatsApp, promociones y zonas de envío
         </p>
       </div>
 
@@ -220,6 +242,43 @@ export function SettingsAdmin({
           Guardar banco
         </Button>
       </section>
+
+      <section className="space-y-4 rounded-md border border-white/[0.08] p-4 sm:p-5">
+        <h2 className="font-sans text-sm font-medium uppercase tracking-[0.14em] text-shimai-gold">
+          WhatsApp
+        </h2>
+        <p className="font-sans text-xs text-shimai-ivory/45">
+          Se muestra en la landing y en confirmaciones de transferencia para
+          pedidos y comprobantes.
+        </p>
+        <div className="space-y-2">
+          <Label htmlFor="whatsapp_phone">Número de WhatsApp</Label>
+          <Input
+            id="whatsapp_phone"
+            value={whatsappPhone}
+            onChange={(e) => setWhatsappPhone(e.target.value)}
+            placeholder="487 123 4567"
+            inputMode="tel"
+            autoComplete="tel"
+          />
+          <p className="font-sans text-xs text-shimai-ivory/40">
+            10 dígitos locales (Rioverde) o con lada +52. Ejemplo: 4871234567
+          </p>
+        </div>
+        <Button
+          disabled={pending}
+          onClick={() => save("whatsapp_contact", { phone: whatsappPhone.trim() })}
+        >
+          Guardar WhatsApp
+        </Button>
+      </section>
+
+      <PromosSettingsSection
+        promos={promos}
+        pending={pending}
+        onChange={setPromos}
+        onSave={() => save("promos", parsePromosSetting(promos))}
+      />
 
       <section className="space-y-4 rounded-md border border-white/[0.08] p-4 sm:p-5">
         <h2 className="font-sans text-sm font-medium uppercase tracking-[0.14em] text-shimai-gold">

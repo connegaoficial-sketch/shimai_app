@@ -20,9 +20,26 @@ export const metadata: Metadata = {
     default: "SHIMAI SUSHI",
     template: "%s · SHIMAI SUSHI",
   },
-  description: "SHIMAI SUSHI HOUSE — dark kitchen premium",
+  description:
+    "SHIMAI SUSHI HOUSE — Por hermanas, una historia, un sabor. Dark kitchen premium con entrega a domicilio.",
   applicationName: "SHIMAI SUSHI",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon-32x32.ico", sizes: "32x32" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icon-192x192.png", sizes: "180x180", type: "image/png" }],
+  },
+  openGraph: {
+    title: "SHIMAI SUSHI HOUSE",
+    description:
+      "Dos hermanas. Un menú. Intensidad de Ane, frescura de Imōto, y lo que crean juntas.",
+    images: [{ url: "/logo_shimai.jpeg", width: 1200, height: 1200, alt: "SHIMAI SUSHI HOUSE" }],
+    locale: "es_MX",
+    type: "website",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

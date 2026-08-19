@@ -19,7 +19,10 @@ export type {
   PaymentMethodsSetting,
   DeliveryConfigSetting,
   DeliveryZone,
+  WhatsAppContactSetting,
 } from "@/types/database";
+
+export type { Promo, PromoType, PromoValueType, PromosSetting } from "@/lib/promos/promos";
 
 import type { PaymentMethod } from "@/types/database";
 
