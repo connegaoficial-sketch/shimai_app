@@ -10,16 +10,17 @@ services:
     runtime: node
     region: ohio
     plan: starter
-    buildCommand: npm ci && npm run build
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: NODE_VERSION
         value: "22"
       - key: NODE_OPTIONS
         value: --max-old-space-size=1536
+      # Keep devDependencies available during `next build` (Tailwind, TypeScript).
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
 
       - key: SHIMAI_APP_URL
         fromService:
