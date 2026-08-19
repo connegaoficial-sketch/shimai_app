@@ -1,0 +1,85 @@
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+
+@theme inline {
+  --color-deep-black: #080808;
+  --color-gold: #c9a45c;
+  --color-sakura: #e8a5b5;
+  --color-ivory: #f4ebdd;
+  --color-seal-red: #9e3030;
+  --color-shimai-black: #080808;
+  --color-shimai-gold: #c9a45c;
+  --color-shimai-sakura: #e8a5b5;
+  --color-shimai-ivory: #f4ebdd;
+  --color-shimai-surface: #1a1a1a;
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-playfair);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #080808;
+  color: #f4ebdd;
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-playfair), Georgia, serif;
+}
+
+@keyframes shimai-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimai-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes shimai-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-shimai-fade-up {
+  animation: shimai-fade-up 0.45s ease-out both;
+}
+
+.animate-shimai-drawer-in {
+  animation: shimai-drawer-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-shimai-backdrop-in {
+  animation: shimai-backdrop-in 0.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimai-fade-up,
+  .animate-shimai-drawer-in,
+  .animate-shimai-backdrop-in {
+    animation: none;
+  }
+}
