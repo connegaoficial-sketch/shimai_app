@@ -7,18 +7,15 @@ import "leaflet/dist/leaflet.css";
 import {
   isMapAlive,
   safeFitBounds,
+  safeInvalidateSize,
   safeSetMarkerLatLng,
 } from "@/lib/maps/leaflet-guards";
+import { addDeliveryTiles } from "@/lib/maps/tiles";
 
 type TrackerMapProps = {
   customer: { lat: number; lng: number } | null;
   driver: { lat: number; lng: number } | null;
 };
-
-const LIGHT_TILES =
-  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const TILE_ATTR =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
 const FALLBACK_CENTER = { lat: 21.916146, lng: -99.9900263 };
 
@@ -55,15 +52,15 @@ export function TrackerMap({ customer, driver }: TrackerMapProps) {
       attributionControl: true,
     }).setView([center.lat, center.lng], 15);
 
-    L.tileLayer(LIGHT_TILES, {
-      attribution: TILE_ATTR,
-      maxZoom: 19,
-    }).addTo(map);
+    addDeliveryTiles(map);
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
     mapRef.current = map;
+    map.whenReady(() => safeInvalidateSize(map));
+    const timeout = window.setTimeout(() => safeInvalidateSize(map), 250);
 
     return () => {
+      window.clearTimeout(timeout);
       driverMarkerRef.current = null;
       customerMarkerRef.current = null;
       mapRef.current = null;

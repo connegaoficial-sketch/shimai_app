@@ -9,13 +9,9 @@ import {
   isInMexicoBounds,
   OUTSIDE_MEXICO_MESSAGE,
 } from "@/lib/delivery/mexico-bounds";
-import { isMapAlive, safeSetMarkerLatLng } from "@/lib/maps/leaflet-guards";
+import { isMapAlive, safeInvalidateSize, safeSetMarkerLatLng } from "@/lib/maps/leaflet-guards";
+import { addDeliveryTiles } from "@/lib/maps/tiles";
 import { cn } from "@/lib/utils";
-
-const LIGHT_TILES =
-  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const TILE_ATTR =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
 const FALLBACK_CENTER = { lat: 21.916146, lng: -99.9900263, zoom: 14 };
 
@@ -114,7 +110,8 @@ export function DeliveryPinMap({
 
     if (pan) {
       try {
-        map.setView([lat, lng], Math.max(map.getZoom(), 16), { animate: true });
+        safeInvalidateSize(map);
+        map.setView([lat, lng], Math.max(map.getZoom(), 16), { animate: false });
       } catch {
         // map torn down mid-update
       }
@@ -132,11 +129,7 @@ export function DeliveryPinMap({
       FALLBACK_CENTER.zoom,
     );
 
-    L.tileLayer(LIGHT_TILES, {
-      attribution: TILE_ATTR,
-      maxZoom: 19,
-    }).addTo(map);
-
+    addDeliveryTiles(map);
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
     map.on("click", (event) => {
@@ -153,7 +146,27 @@ export function DeliveryPinMap({
 
     mapRef.current = map;
 
+    const refreshSize = () => safeInvalidateSize(mapRef.current);
+    map.whenReady(refreshSize);
+    const raf = window.requestAnimationFrame(refreshSize);
+    const timeout = window.setTimeout(refreshSize, 250);
+    window.addEventListener("resize", refreshSize);
+    window.addEventListener("orientationchange", refreshSize);
+    window.visualViewport?.addEventListener("resize", refreshSize);
+
+    const observer =
+      typeof ResizeObserver !== "undefined" && containerRef.current
+        ? new ResizeObserver(refreshSize)
+        : null;
+    if (observer && containerRef.current) observer.observe(containerRef.current);
+
     return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(timeout);
+      window.removeEventListener("resize", refreshSize);
+      window.removeEventListener("orientationchange", refreshSize);
+      window.visualViewport?.removeEventListener("resize", refreshSize);
+      observer?.disconnect();
       markerRef.current = null;
       mapRef.current = null;
       map.remove();
@@ -199,6 +212,8 @@ export function DeliveryPinMap({
         setMarkerAt(lat, lng, true);
         onPositionChange({ lat, lng }, "gps");
         setLocating(false);
+        window.setTimeout(() => safeInvalidateSize(mapRef.current), 80);
+        window.setTimeout(() => safeInvalidateSize(mapRef.current), 320);
       },
       (err) => {
         setLocating(false);
@@ -239,13 +254,17 @@ export function DeliveryPinMap({
       ) : null}
 
       <div
-        ref={containerRef}
         className={cn(
-          "h-56 w-full overflow-hidden rounded-md border border-white/[0.12] bg-white sm:h-64",
+          "relative h-56 w-full overflow-hidden rounded-md border border-white/[0.12] bg-[#e8e4dc] sm:h-64",
           disabled && "pointer-events-none opacity-60",
         )}
-        aria-label="Mapa para ubicar tu entrega"
-      />
+      >
+        <div
+          ref={containerRef}
+          className="absolute inset-0 h-full w-full"
+          aria-label="Mapa para ubicar tu entrega"
+        />
+      </div>
 
       {position ? (
         <p className="font-sans text-[11px] text-shimai-ivory/40">

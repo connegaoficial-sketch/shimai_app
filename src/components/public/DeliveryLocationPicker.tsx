@@ -185,6 +185,7 @@ export function DeliveryLocationPicker({
       <AddressAutocomplete
         value={addressText}
         disabled={disabled}
+        committed={hasCoordinates}
         placeholder="Calle y colonia…"
         onChangeText={(text) => {
           onAddressTextChange(text);

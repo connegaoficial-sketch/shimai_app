@@ -19,6 +19,8 @@ type AddressAutocompleteProps = {
   onNoResults?: () => void;
   disabled?: boolean;
   placeholder?: string;
+  /** When true, the address is already pinned — do not keep suggesting other places. */
+  committed?: boolean;
 };
 
 export function AddressAutocomplete({
@@ -28,6 +30,7 @@ export function AddressAutocomplete({
   onNoResults,
   disabled,
   placeholder = "Busca tu dirección…",
+  committed = false,
 }: AddressAutocompleteProps) {
   const listId = useId();
   const [query, setQuery] = useState(value);
@@ -36,16 +39,36 @@ export function AddressAutocomplete({
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const originRef = useRef<"user" | "external">("external");
 
   useEffect(() => {
+    if (value === query) return;
+    originRef.current = "external";
     setQuery(value);
-  }, [value]);
+    setSuggestions([]);
+    setOpen(false);
+    setSearched(false);
+    abortRef.current?.abort();
+    setLoading(false);
+  }, [query, value]);
 
   useEffect(() => {
+    if (!committed) return;
+    setSuggestions([]);
+    setOpen(false);
+    setSearched(false);
+    abortRef.current?.abort();
+    setLoading(false);
+  }, [committed]);
+
+  useEffect(() => {
+    if (originRef.current !== "user" || committed) return;
+
     const trimmed = query.trim();
     if (trimmed.length < 3) {
       setSuggestions([]);
       setSearched(false);
+      setOpen(false);
       return;
     }
 
@@ -62,6 +85,7 @@ export function AddressAutocomplete({
         const data = (await response.json()) as {
           results?: GeocodeSuggestion[];
         };
+        if (originRef.current !== "user") return;
         setSuggestions(data.results ?? []);
         setSearched(true);
         setOpen(true);
@@ -82,7 +106,7 @@ export function AddressAutocomplete({
       window.clearTimeout(timer);
       abortRef.current?.abort();
     };
-  }, [query]);
+  }, [committed, onNoResults, query]);
 
   return (
     <div className="relative">
@@ -96,10 +120,12 @@ export function AddressAutocomplete({
         aria-controls={listId}
         onChange={(e) => {
           const next = e.target.value;
+          originRef.current = "user";
           setQuery(next);
           onChangeText(next);
         }}
         onFocus={() => {
+          if (committed) return;
           if (suggestions.length > 0) setOpen(true);
         }}
         onBlur={() => {
@@ -133,11 +159,13 @@ export function AddressAutocomplete({
                 )}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
+                  originRef.current = "external";
                   setQuery(item.label);
                   onChangeText(item.label);
                   onSelect(item);
                   setOpen(false);
                   setSuggestions([]);
+                  setSearched(false);
                 }}
               >
                 {item.label}

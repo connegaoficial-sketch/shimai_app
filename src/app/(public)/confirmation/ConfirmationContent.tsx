@@ -98,7 +98,7 @@ export function ConfirmationContent({ whatsappPhone }: ConfirmationContentProps)
             </div>
 
             {isWhatsAppConfigured(transferWhatsApp) ? (
-              <div className="mt-4 rounded-md border border-[#25D366]/30 bg-[#25D366]/10 px-4 py-4">
+              <div className="mt-4 rounded-md border border-shimai-sakura/35 bg-shimai-sakura/10 px-4 py-4">
                 <p className="font-sans text-sm leading-relaxed text-shimai-ivory/85">
                   Envía tu comprobante al WhatsApp de SHIMAI
                 </p>

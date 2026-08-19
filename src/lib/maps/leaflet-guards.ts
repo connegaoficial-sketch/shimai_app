@@ -1,13 +1,12 @@
 import type { Map as LeafletMap, Marker } from "leaflet";
 
 /** Guard map/marker ops when React strict mode or route changes tear down the map. */
-export function isMapAlive(map: LeafletMap | null | undefined): map is LeafletMap {
-  if (!map) return false;
+export function safeInvalidateSize(map: LeafletMap | null | undefined): void {
+  if (!isMapAlive(map)) return;
   try {
-    const container = map.getContainer();
-    return Boolean(container?.isConnected);
+    map.invalidateSize({ animate: false, pan: false });
   } catch {
-    return false;
+    // map torn down
   }
 }
 

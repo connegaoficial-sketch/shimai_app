@@ -46,7 +46,7 @@ export function WhatsAppLink({
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "inline-flex items-center gap-2 font-sans text-sm text-[#25D366] transition-opacity hover:opacity-90",
+        "inline-flex items-center gap-2 font-sans text-sm text-shimai-sakura transition-opacity hover:opacity-90",
         className,
       )}
     >
@@ -76,7 +76,7 @@ export function WhatsAppFab({ phone, message }: WhatsAppFabProps) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Pedir por WhatsApp al ${formatWhatsAppDisplay(phone)}`}
-      className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/30 transition-transform hover:scale-105"
+      className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-shimai-sakura text-shimai-black shadow-lg shadow-black/40 transition-transform hover:scale-105"
     >
       <WhatsAppIcon className="h-7 w-7" />
     </Link>
