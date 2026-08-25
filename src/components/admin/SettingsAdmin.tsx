@@ -343,7 +343,7 @@ export function SettingsAdmin({
           {zones.map((zone, index) => (
             <div
               key={`zone-${index}`}
-              className="grid grid-cols-[1fr_1fr_auto] items-end gap-2"
+              className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_1fr_auto]"
             >
               <div className="space-y-2">
                 <Label htmlFor={`radius-${index}`}>Radio km</Label>

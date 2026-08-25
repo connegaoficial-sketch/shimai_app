@@ -98,7 +98,11 @@ export function PwaUpdateToast() {
     <button
       type="button"
       onClick={() => askWaitingWorkerToActivate(waitingWorker)}
-      className="fixed inset-x-4 bottom-6 z-[70] mx-auto max-w-sm animate-shimai-toast-in border border-shimai-gold/30 bg-shimai-black/95 px-4 py-3 text-left shadow-[0_16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md sm:inset-x-auto sm:bottom-auto sm:right-6 sm:top-24 sm:w-[22rem]"
+      className="fixed z-[70] mx-auto max-w-sm animate-shimai-toast-in border border-shimai-gold/30 bg-shimai-black/95 px-4 py-3 text-left shadow-[0_16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md left-4 right-[5.5rem] sm:inset-x-auto sm:right-6 sm:top-24 sm:bottom-auto sm:w-[22rem]"
+      style={{
+        bottom:
+          "max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 5rem))",
+      }}
     >
       <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-shimai-gold/80">
         SHIMAI

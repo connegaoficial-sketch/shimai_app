@@ -66,20 +66,35 @@ export function WhatsAppFab({ phone, message }: WhatsAppFabProps) {
 
   const href = buildWhatsAppUrl(
     phone,
-    message ?? "Hola SHIMAI, quiero hacer un pedido.",
+    message ??
+      "Hola SHIMAI, no sé qué pedir hoy — ¿qué es lo que más piden?",
   );
   if (!href) return null;
 
   return (
-    <Link
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`Pedir por WhatsApp al ${formatWhatsAppDisplay(phone)}`}
-      className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-shimai-sakura text-shimai-black shadow-lg shadow-black/40 transition-transform hover:scale-105"
+    <div
+      className="pointer-events-none fixed z-40"
+      style={{
+        bottom:
+          "max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))",
+        right: "max(1.25rem, calc(env(safe-area-inset-right, 0px) + 1rem))",
+        left: "auto",
+        top: "auto",
+        maxWidth: "calc(100vw - 2.5rem)",
+      }}
     >
-      <WhatsAppIcon className="h-7 w-7" />
-    </Link>
+      <span className="shimai-glow-border shimai-glow-border--round shimai-glow-border--thick pointer-events-auto inline-flex size-fit shrink-0">
+        <Link
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Pedir por WhatsApp al ${formatWhatsAppDisplay(phone)}`}
+          className="flex size-14 shrink-0 items-center justify-center rounded-full border border-shimai-sakura bg-shimai-sakura text-shimai-black shadow-lg shadow-black/40 transition-transform duration-150 ease-out hover:scale-[1.04] active:scale-[0.97]"
+        >
+          <WhatsAppIcon className="size-7" />
+        </Link>
+      </span>
+    </div>
   );
 }
 

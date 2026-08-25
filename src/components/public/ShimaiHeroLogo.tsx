@@ -6,8 +6,9 @@ import { ShimaiLogo } from "@/components/public/ShimaiLogo";
 import { shimaiBrand } from "@/lib/brand/shimai";
 import { cn } from "@/lib/utils";
 
-const VIDEO_FADE_MS = 950;
-const STATIC_FADE_MS = 1400;
+/** Emil: rare/first-view intro can be longer; exit still ease-out + blur. */
+const VIDEO_FADE_MS = 800;
+const STATIC_FADE_MS = 1100;
 
 type IntroPhase = "playing" | "video-out" | "static-in" | "done";
 
@@ -73,49 +74,73 @@ export function ShimaiHeroLogo({ className }: { className?: string }) {
     video.play().catch(() => finishIntro());
   }, [skipVideo, videoMounted, finishIntro]);
 
-  const isVideoLarge = phase === "playing" || phase === "video-out";
+  const cinemaActive = phase === "playing" || phase === "video-out";
   const isVideoFading = phase === "video-out";
 
   return (
     <div
       className={cn(
-        "relative mx-auto grid w-full place-items-center shimai-hero-stage-resize",
-        isVideoLarge ? "max-w-[min(calc(100vw-2rem),42rem)]" : "max-w-[min(100%,28rem)]",
+        "shimai-hero-stage relative w-full overflow-hidden shimai-hero-stage-resize",
+        cinemaActive ? "shimai-hero-stage--cinema" : "shimai-hero-stage--logo",
         className,
       )}
-      style={{
-        minHeight: isVideoLarge
-          ? "clamp(14rem, min(88vw, 72vh), 40rem)"
-          : "clamp(12rem, min(62vw, 50vh), 28rem)",
-      }}
     >
+      {/* Atmospheric canvas — gold/sakura light so the stage never reads as a flat box */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_50%_42%,rgba(201,164,92,0.22),transparent_62%)]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_50%_70%,rgba(232,165,181,0.08),transparent_65%)]"
+      />
+
+      {/* Static lockup — same cinema mask as video (edges dissolve into black) */}
       <div
         className={cn(
-          "col-start-1 row-start-1 flex w-full items-center justify-center shimai-hero-static-in",
+          "absolute inset-0 z-[2] flex items-center justify-center shimai-hero-static-in",
           staticVisible
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0",
+            ? "pointer-events-auto opacity-100 scale-100"
+            : "pointer-events-none opacity-0 scale-[0.98]",
         )}
         aria-hidden={!staticVisible}
       >
-        <ShimaiLogo
-          variant="full"
-          priority
-          className="h-auto w-auto max-h-[min(72vw,28rem)] max-w-[min(100%,28rem)] object-contain"
-        />
+        <div className="relative h-full w-full">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-[42%] h-[70%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(201,164,92,0.22),transparent_68%)] blur-3xl"
+          />
+          {/* Soft cinema mask; sized so the full lockup stays readable */}
+          <div className="shimai-hero-cinema absolute inset-0 flex items-center justify-center">
+            <ShimaiLogo
+              variant="heroFull"
+              priority
+              className="relative h-auto w-auto max-h-[min(82%,30rem)] max-w-[min(92%,44rem)] object-contain sm:max-h-[min(84%,32rem)] sm:max-w-[min(94%,48rem)]"
+            />
+          </div>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 shimai-hero-cinema-vignette"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_55%_50%_at_50%_45%,transparent_0%,transparent_35%,rgba(8,8,8,0.35)_70%,#080808_100%)]"
+          />
+        </div>
       </div>
 
+      {/* Cinematic video banner — cover + overscale so hard edges never appear */}
       {videoMounted && !skipVideo ? (
         <div
           className={cn(
-            "col-start-1 row-start-1 flex w-full items-center justify-center shimai-hero-video-out",
+            "absolute inset-0 z-[1] shimai-hero-video-out",
             isVideoFading
-              ? "pointer-events-none opacity-0 blur-xl scale-[1.04]"
+              ? "pointer-events-none opacity-0 blur-[6px] scale-[1.03]"
               : "opacity-100 blur-0 scale-100",
           )}
           aria-hidden={isVideoFading}
         >
-          <div className="relative flex scale-100 items-center justify-center sm:scale-[1.08] md:scale-[1.15]">
+          <div className="shimai-hero-cinema absolute inset-0">
             <video
               ref={videoRef}
               autoPlay
@@ -125,22 +150,24 @@ export function ShimaiHeroLogo({ className }: { className?: string }) {
               disablePictureInPicture
               controls={false}
               controlsList="nodownload nofullscreen noremoteplayback"
-              className={cn(
-                "pointer-events-none h-auto w-auto max-h-[min(88vw,72vh,40rem)] max-w-[min(calc(100vw-2rem),42rem)] object-contain",
-                "shimai-hero-video-feather",
-                "[filter:drop-shadow(0_0_64px_rgba(201,164,92,0.16))]",
-              )}
+              className="pointer-events-none absolute left-1/2 top-1/2 h-[118%] w-[118%] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover"
               aria-label={`${shimaiBrand.name} ${shimaiBrand.tagline} — ${shimaiBrand.motto}`}
               onEnded={finishIntro}
               onError={finishIntro}
             >
               <source src={shimaiBrand.logos.heroAnimation} type="video/mp4" />
             </video>
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-[-10%] bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(8,8,8,0.38)_56%,#080808_90%)]"
-            />
           </div>
+
+          {/* Edge dissolve into page black — cinematic letterbox feel without visible frame */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 shimai-hero-cinema-vignette"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_55%_50%_at_50%_45%,transparent_0%,transparent_35%,rgba(8,8,8,0.35)_70%,#080808_100%)]"
+          />
         </div>
       ) : null}
     </div>

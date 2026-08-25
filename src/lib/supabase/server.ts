@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import { getSupabasePublicEnv } from "@/lib/supabase/env";
+import { fetchWithTimeout } from "@/lib/supabase/fetch-with-timeout";
 import type { Database } from "@/types/database";
 
 /**
@@ -14,6 +15,9 @@ export async function createClient() {
 
   return createServerClient<Database, "shimai">(url, key, {
     db: { schema: "shimai" },
+    global: {
+      fetch: fetchWithTimeout,
+    },
     cookies: {
       getAll() {
         return cookieStore.getAll();

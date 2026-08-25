@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s · SHIMAI SUSHI",
   },
   description:
-    "SHIMAI SUSHI HOUSE — Por hermanas, una historia, un sabor. Dark kitchen premium con entrega a domicilio.",
+    "SHIMAI SUSHI HOUSE — ¿Qué se te antoja? Si no sabes, ve por lo que más piden. Entrega en Rioverde, Ciudad Fernández y El Refugio. Horario 10 am–10 pm.",
   applicationName: "SHIMAI SUSHI",
   manifest: "/manifest.json",
   icons: {
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "SHIMAI SUSHI HOUSE",
     description:
-      "Dos hermanas. Un menú. Intensidad de Ane, frescura de Imōto, y lo que crean juntas.",
+      "¿Qué se te antoja? Si no sabes, ve por lo que más piden. Pedido online con entrega en Rioverde y alrededores.",
     images: [{ url: "/logo_shimai.jpeg", width: 1200, height: 1200, alt: "SHIMAI SUSHI HOUSE" }],
     locale: "es_MX",
     type: "website",
@@ -52,6 +52,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
   themeColor: "#080808",
   colorScheme: "dark",
 };
@@ -64,9 +68,9 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${inter.variable} ${playfair.variable} h-full antialiased`}
+      className={`${inter.variable} ${playfair.variable} h-full overflow-x-clip antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-shimai-black font-sans text-shimai-ivory">
+      <body className="flex min-h-dvh flex-col overflow-x-clip bg-shimai-black font-sans text-shimai-ivory touch-manipulation">
         {children}
         <PwaUpdateToast />
       </body>

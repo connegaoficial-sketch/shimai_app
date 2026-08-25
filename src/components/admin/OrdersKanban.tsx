@@ -44,7 +44,7 @@ export function OrdersKanban({ orders }: OrdersKanbanProps) {
         </p>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-4">
+      <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-4 [-webkit-overflow-scrolling:touch]">
         {columns.map((column) => (
           <section
             key={column.status}

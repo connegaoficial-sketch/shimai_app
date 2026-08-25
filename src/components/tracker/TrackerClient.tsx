@@ -177,8 +177,8 @@ export function TrackerClient({
   }, [orderId, supabase]);
 
   return (
-    <div className="flex h-dvh flex-col bg-shimai-black text-shimai-ivory">
-      <header className="shrink-0 px-4 py-3">
+    <div className="flex h-dvh flex-col overflow-hidden bg-shimai-black text-shimai-ivory">
+      <header className="shrink-0 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]">
         <p className="font-serif text-lg tracking-wide text-shimai-ivory">
           SHIMAI
         </p>
@@ -188,12 +188,12 @@ export function TrackerClient({
         <TrackerMap customer={customer} driver={driver} />
       </div>
 
-      <div className="flex-[0.3] border-t border-white/[0.08] bg-shimai-black px-4 py-4">
+      <div className="flex-[0.3] overflow-y-auto border-t border-white/[0.08] bg-shimai-black px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
         <div className="mx-auto max-w-lg rounded-md border border-shimai-gold/25 bg-shimai-surface/70 p-4">
           <p className="font-sans text-[11px] uppercase tracking-[0.16em] text-shimai-gold">
             Estado
           </p>
-          <p className="mt-2 font-serif text-2xl text-shimai-ivory">
+          <p className="mt-2 font-serif text-xl text-shimai-ivory sm:text-2xl">
             {statusCopy(status)}
           </p>
           {driverLine ? (

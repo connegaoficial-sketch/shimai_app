@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { getSupabasePublicEnv } from "@/lib/supabase/env";
+import { fetchWithTimeout } from "@/lib/supabase/fetch-with-timeout";
 import type { Database } from "@/types/database";
 
 /**
@@ -16,6 +17,9 @@ export function createPublicServerClient() {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
+    },
+    global: {
+      fetch: fetchWithTimeout,
     },
   });
 }

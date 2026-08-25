@@ -9,18 +9,15 @@ export function SistersStory() {
     >
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
         <header className="mb-12 max-w-xl animate-shimai-fade-up">
-          <p className="font-sans text-[11px] uppercase tracking-[0.28em] text-shimai-gold/80">
-            Las hermanas
-          </p>
           <h2
             id="sisters-heading"
-            className="mt-2 font-serif text-3xl leading-tight text-shimai-ivory sm:text-4xl"
+            className="font-serif text-3xl leading-tight text-shimai-ivory sm:text-4xl"
           >
-            Tres voces, un menú
+            Cocina de hermanas, menú fácil de elegir
           </h2>
           <p className="mt-3 font-sans text-sm leading-relaxed text-shimai-ivory/50">
-            Cada categoría cuenta la historia de Ane e Imōto — y lo que crean
-            cuando cocinan juntas.
+            Tres caminos según tu antojo. No hace falta memorizar el menú: elige
+            el que suena a lo que quieres hoy.
           </p>
         </header>
 

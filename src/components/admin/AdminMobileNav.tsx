@@ -16,7 +16,10 @@ export function AdminMobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-1 overflow-x-auto">
+    <nav
+      aria-label="Admin"
+      className="flex gap-1 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       {NAV.map((item) => {
         const active = pathname.startsWith(item.href);
         return (
@@ -24,7 +27,7 @@ export function AdminMobileNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "shrink-0 rounded-md px-3 py-2 font-sans text-xs uppercase tracking-[0.12em] transition-colors",
+              "inline-flex min-h-11 shrink-0 items-center rounded-md px-3 py-2 font-sans text-xs uppercase tracking-[0.12em] transition-colors",
               active
                 ? "bg-shimai-gold/15 text-shimai-gold"
                 : "text-shimai-ivory/60 hover:text-shimai-ivory",

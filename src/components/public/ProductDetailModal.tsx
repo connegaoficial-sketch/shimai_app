@@ -3,9 +3,12 @@
 import Image from "next/image";
 import { useEffect, useMemo } from "react";
 
+import { CrossSellRail } from "@/components/public/CrossSellRail";
 import { Button } from "@/components/ui/button";
 import { formatMxn } from "@/lib/format";
-import type { MenuProduct } from "@/lib/menu/get-menu-data";
+import { shimaiBrand } from "@/lib/brand/shimai";
+import { getCrossSellProducts } from "@/lib/menu/cross-sell";
+import type { MenuCategory, MenuProduct } from "@/lib/menu/get-menu-data";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { useCartUiStore } from "@/stores/cartUiStore";
@@ -13,7 +16,11 @@ import { useCartUiStore } from "@/stores/cartUiStore";
 type ProductDetailModalProps = {
   open: boolean;
   product: MenuProduct | null;
+  /** Products for prev/next within the active category */
   products: MenuProduct[];
+  /** Full catalog for cross-sell */
+  catalog?: MenuProduct[];
+  categories?: MenuCategory[];
   accent?: "gold" | "sakura";
   onClose: () => void;
   onNavigate: (productId: string) => void;
@@ -23,10 +30,13 @@ export function ProductDetailModal({
   open,
   product,
   products,
+  catalog,
+  categories = [],
   accent = "gold",
   onClose,
   onNavigate,
 }: ProductDetailModalProps) {
+  const cartItems = useCartStore((s) => s.items);
   const quantity = useCartStore((s) =>
     product
       ? (s.items.find((i) => i.productId === product.id)?.quantity ?? 0)
@@ -44,6 +54,29 @@ export function ProductDetailModal({
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex >= 0 && currentIndex < products.length - 1;
 
+  const crossSell = useMemo(() => {
+    if (!product) return { products: [] as MenuProduct[], hint: "" };
+    const pool = catalog && catalog.length > 0 ? catalog : products;
+    const lines =
+      cartItems.length > 0
+        ? cartItems.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          }))
+        : [{ productId: product.id, quantity: 1 }];
+
+    return getCrossSellProducts({
+      products: pool,
+      categories,
+      cartLines: lines,
+      excludeIds: [
+        product.id,
+        ...cartItems.map((item) => item.productId),
+      ],
+      limit: 4,
+    });
+  }, [product, catalog, products, cartItems, categories]);
+
   useEffect(() => {
     if (!open) return;
 
@@ -52,6 +85,8 @@ export function ProductDetailModal({
         onClose();
         return;
       }
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-cross-sell-rail]")) return;
       if (event.key === "ArrowLeft" && hasPrev) {
         onNavigate(products[currentIndex - 1]!.id);
       }
@@ -95,8 +130,8 @@ export function ProductDetailModal({
         aria-modal="true"
         aria-labelledby="product-detail-title"
         className={cn(
-          "relative flex max-h-[92dvh] w-full flex-col overflow-hidden border border-white/[0.08] bg-shimai-black",
-          "animate-shimai-sheet-up md:max-h-[min(90dvh,820px)] md:max-w-2xl md:animate-shimai-modal-in md:rounded-sm md:shadow-[0_24px_80px_rgba(0,0,0,0.55)]",
+          "relative flex max-h-[min(92dvh,100%)] w-full flex-col overflow-hidden border border-white/[0.08] bg-shimai-black",
+          "animate-shimai-sheet-up pb-[env(safe-area-inset-bottom,0px)] md:max-h-[min(90dvh,820px)] md:max-w-2xl md:animate-shimai-modal-in md:rounded-sm md:pb-0 md:shadow-[0_24px_80px_rgba(0,0,0,0.55)]",
         )}
       >
         <div className="relative aspect-[4/3] w-full shrink-0 bg-shimai-black md:aspect-[16/10]">
@@ -129,7 +164,7 @@ export function ProductDetailModal({
             <button
               type="button"
               onClick={onClose}
-              className="pointer-events-auto border border-white/10 bg-shimai-black/70 px-3 py-1.5 font-sans text-xs text-shimai-ivory/80 backdrop-blur-sm transition-colors hover:text-shimai-ivory"
+              className="pointer-events-auto border border-white/10 bg-shimai-black/70 px-3 py-1.5 font-sans text-xs text-shimai-ivory/80 backdrop-blur-sm transition-colors duration-150 hover:text-shimai-ivory active:scale-[0.97]"
             >
               Cerrar
             </button>
@@ -141,9 +176,11 @@ export function ProductDetailModal({
                 type="button"
                 aria-label="Producto anterior"
                 disabled={!hasPrev}
-                onClick={() => hasPrev && onNavigate(products[currentIndex - 1]!.id)}
+                onClick={() =>
+                  hasPrev && onNavigate(products[currentIndex - 1]!.id)
+                }
                 className={cn(
-                  "absolute left-3 top-1/2 -translate-y-1/2 border border-white/10 bg-shimai-black/70 px-2.5 py-2 font-sans text-lg text-shimai-ivory backdrop-blur-sm transition-opacity",
+                  "absolute left-3 top-1/2 -translate-y-1/2 border border-white/10 bg-shimai-black/70 px-2.5 py-2 font-sans text-lg text-shimai-ivory backdrop-blur-sm transition-opacity duration-150",
                   hasPrev ? "hover:text-shimai-gold" : "opacity-30",
                 )}
               >
@@ -153,9 +190,11 @@ export function ProductDetailModal({
                 type="button"
                 aria-label="Producto siguiente"
                 disabled={!hasNext}
-                onClick={() => hasNext && onNavigate(products[currentIndex + 1]!.id)}
+                onClick={() =>
+                  hasNext && onNavigate(products[currentIndex + 1]!.id)
+                }
                 className={cn(
-                  "absolute right-3 top-1/2 -translate-y-1/2 border border-white/10 bg-shimai-black/70 px-2.5 py-2 font-sans text-lg text-shimai-ivory backdrop-blur-sm transition-opacity",
+                  "absolute right-3 top-1/2 -translate-y-1/2 border border-white/10 bg-shimai-black/70 px-2.5 py-2 font-sans text-lg text-shimai-ivory backdrop-blur-sm transition-opacity duration-150",
                   hasNext ? "hover:text-shimai-gold" : "opacity-30",
                 )}
               >
@@ -174,7 +213,7 @@ export function ProductDetailModal({
                   accentBorder,
                 )}
               >
-                Shimai Signature
+                {shimaiBrand.popularLabel}
               </span>
             ) : null}
             <h2
@@ -194,14 +233,16 @@ export function ProductDetailModal({
             </p>
           ) : null}
 
-          <div className="mt-auto flex items-center justify-between gap-4 border-t border-white/[0.06] pt-4">
+          <div className="flex items-center justify-between gap-4 border-t border-white/[0.06] pt-4">
             {quantity === 0 ? (
               <Button
                 className={cn(
                   "h-11 flex-1 border text-shimai-black",
                   accentBg,
                   accentHover,
-                  accent === "sakura" ? "border-shimai-sakura" : "border-shimai-gold",
+                  accent === "sakura"
+                    ? "border-shimai-sakura"
+                    : "border-shimai-gold",
                 )}
                 onClick={() => {
                   addItem(product.id, 1);
@@ -234,11 +275,23 @@ export function ProductDetailModal({
                   </button>
                 </div>
                 <p className="font-sans text-xs uppercase tracking-[0.16em] text-shimai-ivory/45">
-                  En tu carrito
+                  En tu pedido
                 </p>
               </div>
             )}
           </div>
+
+          {crossSell.products.length > 0 ? (
+            <div className="border-t border-white/[0.06] pt-5">
+              <CrossSellRail
+                title="¿No sabes qué más?"
+                subtitle={crossSell.hint}
+                products={crossSell.products}
+                onOpenProduct={onNavigate}
+                compact
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

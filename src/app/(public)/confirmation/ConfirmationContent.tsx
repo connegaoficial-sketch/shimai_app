@@ -36,7 +36,7 @@ export function ConfirmationContent({ whatsappPhone }: ConfirmationContentProps)
     : "Hola SHIMAI, envío comprobante de transferencia de mi pedido.";
 
   return (
-    <main className="min-h-full bg-shimai-black">
+    <main className="min-h-dvh bg-shimai-black">
       <div className="border-b border-white/[0.06] px-4 py-4 sm:px-6">
         <Link
           href="/"

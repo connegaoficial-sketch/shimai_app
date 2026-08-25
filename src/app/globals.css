@@ -16,6 +16,167 @@
   --font-serif: var(--font-playfair);
 }
 
+/* Rotating sakura glow — behind the button, outside its box */
+@property --shimai-glow-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes shimai-glow-rotate {
+  to {
+    --shimai-glow-angle: 360deg;
+  }
+}
+
+/*
+  Glow layers sit BEHIND the child (z-index: -1).
+  No fill on the wrapper — only a thin outer ring + soft bloom.
+*/
+.shimai-glow-border {
+  --shimai-glow-angle: 0deg;
+  --shimai-glow-thickness: 2px;
+  display: inline-flex;
+  position: relative;
+  overflow: visible;
+  vertical-align: middle;
+  isolation: isolate; /* keep glow behind the button, not behind the page */
+  border-radius: 0.375rem;
+  padding: 0;
+  background: transparent;
+}
+
+/* Soft bloom behind */
+.shimai-glow-border::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  z-index: -2;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--shimai-glow-angle),
+    transparent 0deg,
+    transparent 55deg,
+    #ffe4ec 95deg,
+    #ff9eb8 135deg,
+    #fff0f5 165deg,
+    #ffb7c8 195deg,
+    #e8a5b5 225deg,
+    transparent 275deg,
+    transparent 360deg
+  );
+  filter: blur(8px);
+  opacity: 0.55;
+  animation: shimai-glow-rotate 2.6s linear infinite;
+}
+
+/* Thin rotating ring behind the button — only the rim peeks past the edges */
+.shimai-glow-border::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--shimai-glow-thickness) * -1);
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--shimai-glow-angle),
+    transparent 0deg,
+    transparent 55deg,
+    #ffe4ec 95deg,
+    #ff9eb8 135deg,
+    #fff0f5 165deg,
+    #ffb7c8 195deg,
+    #e8a5b5 225deg,
+    transparent 275deg,
+    transparent 360deg
+  );
+  animation: shimai-glow-rotate 2.6s linear infinite;
+}
+
+.shimai-glow-border > * {
+  position: relative;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+/* Disabled: fade the whole control so glow never shows through the face */
+.shimai-glow-border:has(> :disabled) {
+  opacity: 0.5;
+}
+
+.shimai-glow-border > :disabled {
+  opacity: 1 !important;
+}
+
+/* Stretch wrapper when the CTA is full-width / flex-1 */
+.shimai-glow-border.w-full,
+.shimai-glow-border:has(> .w-full) {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+}
+
+.shimai-glow-border.w-full > *,
+.shimai-glow-border:has(> .w-full) > * {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.shimai-glow-border.flex-1,
+.shimai-glow-border:has(> .flex-1) {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.shimai-glow-border.flex-1 > *,
+.shimai-glow-border:has(> .flex-1) > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.shimai-glow-border--round {
+  width: fit-content;
+  height: fit-content;
+  max-width: none;
+  flex: none;
+  border-radius: 9999px;
+}
+
+.shimai-glow-border--round > * {
+  flex: none !important;
+  width: 3.5rem !important;
+  height: 3.5rem !important;
+  border-radius: 9999px;
+}
+
+.shimai-glow-border--thick {
+  --shimai-glow-thickness: 2.5px;
+}
+
+.shimai-glow-border--thick::before {
+  inset: -7px;
+  filter: blur(10px);
+  opacity: 0.65;
+}
+
+.shimai-glow-border--square {
+  border-radius: 0;
+  max-width: 100%;
+}
+
+.shimai-glow-border--square > * {
+  border-radius: 0;
+}
+
+.shimai-glow-border--square.w-full,
+.shimai-glow-border.w-full {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+}
+
 html {
   color-scheme: dark;
 }
@@ -24,6 +185,17 @@ body {
   background-color: #080808;
   color: #f4ebdd;
   font-family: var(--font-inter), system-ui, sans-serif;
+  overscroll-behavior-y: none;
+}
+
+/* Prefer compositor-friendly taps on interactive controls */
+button,
+a,
+[role="button"],
+input,
+select,
+textarea {
+  touch-action: manipulation;
 }
 
 h1,
@@ -38,7 +210,7 @@ h6 {
 @keyframes shimai-fade-up {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -65,7 +237,7 @@ h6 {
 }
 
 .animate-shimai-fade-up {
-  animation: shimai-fade-up 0.45s ease-out both;
+  animation: shimai-fade-up 0.32s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
 .animate-shimai-drawer-in {
@@ -127,6 +299,159 @@ h6 {
     transform 160ms ease-out;
 }
 
+/* Product cards — desire: light, lift, zoom (transform/opacity only) */
+.shimai-product-card {
+  position: relative;
+  isolation: isolate;
+  transition:
+    transform 260ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 260ms ease,
+    box-shadow 260ms ease;
+}
+
+.shimai-product-card::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse 90% 70% at 50% 0%,
+    rgba(201, 164, 92, 0.16),
+    transparent 62%
+  );
+  transition: opacity 280ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.shimai-product-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.shimai-product-card-image {
+  transition: transform 420ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.shimai-product-card-cta {
+  transition:
+    transform 220ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 220ms ease,
+    letter-spacing 220ms ease;
+}
+
+.shimai-product-card--sakura::before {
+  background: radial-gradient(
+    ellipse 90% 70% at 50% 0%,
+    rgba(232, 165, 181, 0.18),
+    transparent 62%
+  );
+}
+
+.shimai-product-card--in-cart {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-shimai-gold) 35%, transparent),
+    0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.shimai-featured-card {
+  position: relative;
+  isolation: isolate;
+}
+
+.shimai-featured-card::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  opacity: 0.55;
+  background: radial-gradient(
+    ellipse 70% 80% at 20% 40%,
+    rgba(201, 164, 92, 0.22),
+    transparent 58%
+  );
+  filter: blur(18px);
+}
+
+.shimai-featured-card--sakura::after {
+  background: radial-gradient(
+    ellipse 70% 80% at 20% 40%,
+    rgba(232, 165, 181, 0.24),
+    transparent 58%
+  );
+}
+
+.shimai-trust-cell {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 240ms cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 240ms ease;
+}
+
+.shimai-trust-cell::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(
+    circle at 20% 0%,
+    rgba(201, 164, 92, 0.14),
+    transparent 55%
+  );
+  transition: opacity 260ms ease;
+}
+
+.shimai-trust-cell > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .shimai-product-card:hover {
+    transform: translateY(-6px);
+    border-color: color-mix(in srgb, var(--color-shimai-gold) 55%, transparent);
+    box-shadow:
+      0 18px 44px rgba(0, 0, 0, 0.45),
+      0 0 28px rgba(201, 164, 92, 0.12);
+  }
+
+  .shimai-product-card:hover::before {
+    opacity: 1;
+  }
+
+  .shimai-product-card--sakura:hover {
+    border-color: color-mix(in srgb, var(--color-shimai-sakura) 50%, transparent);
+    box-shadow:
+      0 18px 44px rgba(0, 0, 0, 0.45),
+      0 0 28px rgba(232, 165, 181, 0.14);
+  }
+
+  .shimai-product-card:hover .shimai-product-card-image {
+    transform: scale(1.08);
+  }
+
+  .shimai-product-card:hover .shimai-product-card-cta {
+    transform: translateX(4px);
+    letter-spacing: 0.22em;
+  }
+
+  .shimai-trust-cell:hover {
+    transform: translateY(-3px);
+    background-color: #0e0e0e;
+  }
+
+  .shimai-trust-cell:hover::before {
+    opacity: 1;
+  }
+}
+
+.shimai-product-card:active {
+  transform: scale(0.985);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-shimai-fade-up,
   .animate-shimai-drawer-in,
@@ -137,8 +462,39 @@ h6 {
     animation: none;
   }
 
-  .shimai-menu-fade {
+  .shimai-glow-border::before,
+  .shimai-glow-border::after {
+    animation: none;
+    background: linear-gradient(
+      135deg,
+      #ffb7c8,
+      #e8a5b5,
+      #ffe4ec,
+      #ff9eb8
+    );
+  }
+
+  .shimai-menu-fade,
+  .shimai-product-card,
+  .shimai-product-card-image,
+  .shimai-product-card-cta,
+  .shimai-trust-cell {
     transition: none !important;
+  }
+
+  .shimai-product-card:hover,
+  .shimai-product-card:active,
+  .shimai-product-card:hover .shimai-product-card-image,
+  .shimai-product-card:hover .shimai-product-card-cta,
+  .shimai-trust-cell:hover {
+    transform: none !important;
+  }
+
+  .shimai-product-card::before,
+  .shimai-featured-card::after,
+  .shimai-trust-cell::before {
+    opacity: 0 !important;
+    filter: none !important;
   }
 
   .shimai-hero-video-out,
@@ -152,41 +508,69 @@ h6 {
   }
 }
 
-/* Hero logo video — soft edges into page background (#080808) */
-.shimai-hero-video-feather {
+/* Hero cinema — full-bleed stage, edges dissolve into #080808 */
+.shimai-hero-stage {
+  background-color: #080808;
+}
+
+.shimai-hero-stage--cinema {
+  min-height: clamp(18rem, 58svh, 34rem);
+}
+
+.shimai-hero-stage--logo {
+  /* Nearly same height as cinema — avoids the “shrink” when the video ends */
+  min-height: clamp(17rem, 54svh, 32rem);
+}
+
+.shimai-hero-cinema {
+  /* Soft oval dissolve — no hard video rectangle */
   -webkit-mask-image: radial-gradient(
-    ellipse 96% 92% at 50% 50%,
-    #000 6%,
-    rgb(0 0 0 / 0.95) 28%,
-    rgb(0 0 0 / 0.72) 44%,
-    rgb(0 0 0 / 0.38) 58%,
-    rgb(0 0 0 / 0.12) 72%,
-    transparent 86%
+    ellipse 78% 72% at 50% 48%,
+    #000 18%,
+    rgb(0 0 0 / 0.92) 42%,
+    rgb(0 0 0 / 0.55) 62%,
+    rgb(0 0 0 / 0.18) 78%,
+    transparent 92%
   );
   mask-image: radial-gradient(
-    ellipse 96% 92% at 50% 50%,
-    #000 6%,
-    rgb(0 0 0 / 0.95) 28%,
-    rgb(0 0 0 / 0.72) 44%,
-    rgb(0 0 0 / 0.38) 58%,
-    rgb(0 0 0 / 0.12) 72%,
-    transparent 86%
+    ellipse 78% 72% at 50% 48%,
+    #000 18%,
+    rgb(0 0 0 / 0.92) 42%,
+    rgb(0 0 0 / 0.55) 62%,
+    rgb(0 0 0 / 0.18) 78%,
+    transparent 92%
   );
+}
+
+.shimai-hero-cinema-vignette {
+  background:
+    linear-gradient(to right, #080808 0%, transparent 18%, transparent 82%, #080808 100%),
+    linear-gradient(to bottom, #080808 0%, transparent 22%, transparent 78%, #080808 100%);
 }
 
 .shimai-hero-video-out {
   transition:
-    opacity 950ms ease-out,
-    filter 950ms ease-out,
-    transform 950ms ease-out;
+    opacity 800ms cubic-bezier(0.23, 1, 0.32, 1),
+    filter 800ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 800ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* Emil: ease-out on enter — never ease-in (feels sluggish) */
 .shimai-hero-static-in {
-  transition: opacity 1400ms ease-in;
+  transition:
+    opacity 1100ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 1100ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .shimai-hero-stage-resize {
-  transition: min-height 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: min-height 650ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimai-hero-stage--cinema,
+  .shimai-hero-stage--logo {
+    min-height: clamp(14rem, 40svh, 24rem);
+  }
 }
 
 html:focus-within {

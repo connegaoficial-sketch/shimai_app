@@ -43,13 +43,20 @@ export async function getMenuData(): Promise<MenuData> {
         .maybeSingle(),
     ]);
 
-  if (categoriesResult.error) {
-    throw new Error(
-      `Failed to load categories: ${categoriesResult.error.message}`,
-    );
-  }
-  if (productsResult.error) {
-    throw new Error(`Failed to load products: ${productsResult.error.message}`);
+  if (categoriesResult.error || productsResult.error) {
+    const message =
+      categoriesResult.error?.message ??
+      productsResult.error?.message ??
+      "Unknown menu load error";
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[shimai] menu:", message);
+    }
+    // Fail soft so /checkout and / don't hang the UI for a minute on network blips.
+    return {
+      categories: [],
+      products: [],
+      paymentMethods: DEFAULT_PAYMENT_METHODS,
+    };
   }
 
   const paymentMethods =

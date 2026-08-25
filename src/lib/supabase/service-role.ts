@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { fetchWithTimeout } from "@/lib/supabase/fetch-with-timeout";
 import type { Database } from "@/types/database";
 
 /**
@@ -22,6 +23,9 @@ export function createServiceRoleClient() {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
+    },
+    global: {
+      fetch: fetchWithTimeout,
     },
   });
 }

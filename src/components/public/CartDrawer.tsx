@@ -1,11 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
+import { CrossSellRail } from "@/components/public/CrossSellRail";
 import { Button } from "@/components/ui/button";
 import { formatMxn } from "@/lib/format";
-import type { MenuProduct } from "@/lib/menu/get-menu-data";
+import { getCrossSellProducts } from "@/lib/menu/cross-sell";
+import type { MenuCategory, MenuProduct } from "@/lib/menu/get-menu-data";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 
@@ -13,18 +15,48 @@ type CartDrawerProps = {
   open: boolean;
   onClose: () => void;
   products: MenuProduct[];
+  categories: MenuCategory[];
 };
 
-export function CartDrawer({ open, onClose, products }: CartDrawerProps) {
+export function CartDrawer({
+  open,
+  onClose,
+  products,
+  categories,
+}: CartDrawerProps) {
   const router = useRouter();
   const items = useCartStore((s) => s.items);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
+  const [isPending, startTransition] = useTransition();
+  const [goingCheckout, setGoingCheckout] = useState(false);
+
+  const busy = goingCheckout || isPending;
+
+  const crossSell = useMemo(() => {
+    if (items.length === 0) {
+      return { products: [] as MenuProduct[], hint: "" };
+    }
+    return getCrossSellProducts({
+      products,
+      categories,
+      cartLines: items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+      excludeIds: items.map((item) => item.productId),
+      limit: 4,
+    });
+  }, [items, products, categories]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setGoingCheckout(false);
+      return;
+    }
+    router.prefetch("/checkout");
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !busy) onClose();
     };
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -32,7 +64,7 @@ export function CartDrawer({ open, onClose, products }: CartDrawerProps) {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [open, onClose, router, busy]);
 
   const productMap = new Map(products.map((p) => [p.id, p]));
 
@@ -44,14 +76,17 @@ export function CartDrawer({ open, onClose, products }: CartDrawerProps) {
         type="button"
         aria-label="Cerrar carrito"
         className="absolute inset-0 bg-black/70 animate-shimai-backdrop-in"
-        onClick={onClose}
+        disabled={busy}
+        onClick={() => {
+          if (!busy) onClose();
+        }}
       />
 
       <aside
         role="dialog"
         aria-modal="true"
         aria-label="Carrito"
-        className="relative flex h-full w-full max-w-md flex-col border-l border-shimai-gold/20 bg-shimai-black animate-shimai-drawer-in"
+        className="relative flex h-full w-full max-w-md flex-col border-l border-shimai-gold/20 bg-shimai-black animate-shimai-drawer-in pt-[env(safe-area-inset-top,0px)]"
       >
         <header className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
           <div>
@@ -62,8 +97,9 @@ export function CartDrawer({ open, onClose, products }: CartDrawerProps) {
           </div>
           <button
             type="button"
+            disabled={busy}
             onClick={onClose}
-            className="font-sans text-sm text-shimai-ivory/50 hover:text-shimai-ivory"
+            className="font-sans text-sm text-shimai-ivory/50 hover:text-shimai-ivory disabled:opacity-40"
           >
             Cerrar
           </button>
@@ -71,9 +107,24 @@ export function CartDrawer({ open, onClose, products }: CartDrawerProps) {
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {items.length === 0 ? (
-            <p className="pt-10 text-center font-sans text-sm text-shimai-ivory/45">
-              Aún no hay piezas en tu carrito.
-            </p>
+            <div className="space-y-4 pt-8 text-center">
+              <p className="font-sans text-sm text-shimai-ivory/45">
+                Tu pedido está vacío. Si no sabes qué elegir, baja al menú y
+                ve por lo que más piden.
+              </p>
+              <Button
+                variant="outline"
+                className="mx-auto"
+                onClick={() => {
+                  onClose();
+                  document
+                    .getElementById("menu")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                Ayúdame a elegir
+              </Button>
+            </div>
           ) : (
             <ul className="space-y-4">
               {items.map((item) => {
@@ -135,6 +186,17 @@ export function CartDrawer({ open, onClose, products }: CartDrawerProps) {
             </ul>
           )}
 
+          {items.length > 0 && crossSell.products.length > 0 ? (
+            <div className="mt-8 border-t border-white/[0.06] pt-6">
+              <CrossSellRail
+                title="¿No sabes qué más?"
+                subtitle={crossSell.hint}
+                products={crossSell.products}
+                compact
+              />
+            </div>
+          ) : null}
+
           {items.length > 0 ? (
             <p className="mt-6 font-sans text-[11px] leading-relaxed text-shimai-ivory/35">
               El total final se confirma al completar tu pedido.
@@ -152,13 +214,20 @@ export function CartDrawer({ open, onClose, products }: CartDrawerProps) {
             variant="primary"
             size="lg"
             className="w-full font-sans tracking-wide"
-            disabled={items.length === 0}
+            disabled={items.length === 0 || busy}
             onClick={() => {
-              onClose();
-              router.push("/checkout");
+              // Keep the drawer open so the menu doesn't flash while /checkout loads.
+              setGoingCheckout(true);
+              startTransition(() => {
+                router.push("/checkout");
+              });
             }}
           >
-            {items.length === 0 ? "Carrito vacío" : "Ordenar"}
+            {items.length === 0
+              ? "Carrito vacío"
+              : busy
+                ? "Abriendo pedido…"
+                : "Continuar pedido"}
           </Button>
         </div>
       </aside>
