@@ -16,16 +16,24 @@ type TrackerMapProps = {
 
 const FALLBACK_CENTER = { lat: 21.916146, lng: -99.9900263 };
 
+/** Destination — sakura house pin */
 const CUSTOMER_PIN = encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
-    <circle cx="9" cy="9" r="7" fill="#E8A5B5" stroke="#1a1a1a" stroke-width="2"/>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
+    <path fill="#E8A5B5" stroke="#1a1a1a" stroke-width="1.6"
+      d="M18 2c-7.7 0-14 6.1-14 13.6C4 26.2 18 42 18 42s14-15.8 14-26.4C32 8.1 25.7 2 18 2z"/>
+    <path fill="#1a1a1a" d="M12 22.5V17l6-4.5 6 4.5v5.5h-3.2v-3.2h-5.6v3.2H12z"/>
   </svg>`,
 );
 
+/** Driver — gold map pin with scooter silhouette (clearly not a plain dot) */
 const DRIVER_PIN = encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
-    <circle cx="11" cy="11" r="8" fill="#C9A45C" stroke="#1a1a1a" stroke-width="2"/>
-    <circle cx="11" cy="11" r="3" fill="#1a1a1a"/>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" viewBox="0 0 40 48">
+    <path fill="#C9A45C" stroke="#1a1a1a" stroke-width="1.8"
+      d="M20 2c-8.3 0-15 6.5-15 14.5C5 29.2 20 46 20 46s15-16.8 15-29.5C35 8.5 28.3 2 20 2z"/>
+    <circle cx="13.5" cy="20" r="3.2" fill="none" stroke="#1a1a1a" stroke-width="1.6"/>
+    <circle cx="26.5" cy="20" r="3.2" fill="none" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path fill="none" stroke="#1a1a1a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+      d="M16.5 20h7M23.5 20l2-5h3.5M18 15h4.5"/>
   </svg>`,
 );
 
@@ -101,8 +109,8 @@ export function TrackerMap({ customer, driver }: TrackerMapProps) {
           title: "Tu ubicación",
           icon: {
             url: `data:image/svg+xml;charset=UTF-8,${CUSTOMER_PIN}`,
-            scaledSize: new maps.Size(18, 18),
-            anchor: new maps.Point(9, 9),
+            scaledSize: new maps.Size(36, 44),
+            anchor: new maps.Point(18, 44),
           },
           zIndex: 1,
         });
@@ -119,8 +127,8 @@ export function TrackerMap({ customer, driver }: TrackerMapProps) {
           title: "Repartidor",
           icon: {
             url: `data:image/svg+xml;charset=UTF-8,${DRIVER_PIN}`,
-            scaledSize: new maps.Size(22, 22),
-            anchor: new maps.Point(11, 11),
+            scaledSize: new maps.Size(40, 48),
+            anchor: new maps.Point(20, 48),
           },
           zIndex: 2,
         });

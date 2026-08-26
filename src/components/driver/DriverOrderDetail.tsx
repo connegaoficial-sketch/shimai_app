@@ -312,15 +312,19 @@ export function DriverOrderDetail({
             variant="sakura"
             onConfirm={async () => {
               const result = await run(() => markDelivered(order.id));
-              if (result.ok) setStatus("delivered");
               if (!result.ok) throw new Error(result.error);
+              setStatus("delivered");
+              window.setTimeout(() => {
+                router.replace("/driver");
+                router.refresh();
+              }, 900);
             }}
           />
         ) : null}
 
         {status === "delivered" ? (
           <p className="text-center font-sans text-sm text-shimai-gold">
-            Entrega completada
+            Entrega completada — volviendo a pedidos…
           </p>
         ) : null}
       </div>

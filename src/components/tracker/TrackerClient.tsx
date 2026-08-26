@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { PushPermissionBanner } from "@/components/pwa/PushPermissionBanner";
@@ -139,9 +141,11 @@ export function TrackerClient({
   initialDriver,
   driverName,
 }: TrackerClientProps) {
+  const router = useRouter();
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
   const [driver, setDriver] = useState(initialDriver);
   const [displayDriverName, setDisplayDriverName] = useState(driverName);
+  const [redirectIn, setRedirectIn] = useState<number | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -155,6 +159,29 @@ export function TrackerClient({
   useEffect(() => {
     setDisplayDriverName(driverName);
   }, [driverName]);
+
+  // After delivery: show message, then send customer back to SHIMAI home
+  useEffect(() => {
+    if (status !== "delivered") {
+      setRedirectIn(null);
+      return;
+    }
+
+    setRedirectIn(6);
+    const tick = window.setInterval(() => {
+      setRedirectIn((n) => {
+        if (n == null) return null;
+        if (n <= 1) {
+          window.clearInterval(tick);
+          router.replace("/");
+          return 0;
+        }
+        return n - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(tick);
+  }, [status, router]);
 
   useEffect(() => {
     if (displayDriverName) return;
@@ -286,8 +313,26 @@ export function TrackerClient({
           ) : null}
           {status === "in_transit" ? (
             <p className="mt-3 font-sans text-xs text-shimai-gold/80">
-              Pin dorado = repartidor · punto sakura = tu dirección
+              Pin moto dorado = repartidor · pin casa sakura = tu dirección
             </p>
+          ) : null}
+          {status === "delivered" ? (
+            <div className="mt-4 space-y-3">
+              <p className="font-sans text-sm text-shimai-ivory/70">
+                ¡Gracias por pedir en SHIMAI!
+              </p>
+              <Link
+                href="/"
+                className="inline-flex h-11 items-center justify-center border border-shimai-gold bg-shimai-gold px-4 font-sans text-sm font-medium text-shimai-black"
+              >
+                Volver a SHIMAI
+              </Link>
+              {redirectIn != null && redirectIn > 0 ? (
+                <p className="font-sans text-[11px] text-shimai-ivory/45">
+                  Te llevamos al inicio en {redirectIn}s…
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
