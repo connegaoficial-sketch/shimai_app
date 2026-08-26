@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-import { DriverNotificationListener } from "@/components/driver/DriverNotificationListener";
+import { DriverGpsSession } from "@/components/driver/DriverGpsSession";
+import { DriverNotificationCenter } from "@/components/driver/DriverNotificationCenter";
 import { PushPermissionBanner } from "@/components/pwa/PushPermissionBanner";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -30,7 +31,6 @@ export function DriverShell({
 
   return (
     <div className="flex min-h-dvh flex-col bg-shimai-black text-shimai-ivory">
-      <DriverNotificationListener driverId={driverId} />
       <header className="sticky top-0 z-20 border-b border-white/[0.08] bg-shimai-black/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
           <Link href="/driver" className="min-w-0">
@@ -39,14 +39,17 @@ export function DriverShell({
               {driverName}
             </p>
           </Link>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-11 px-3 text-xs"
-            onClick={() => void signOut()}
-          >
-            Salir
-          </Button>
+          <div className="flex items-center gap-2">
+            <DriverNotificationCenter driverId={driverId} />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-11 px-3 text-xs"
+              onClick={() => void signOut()}
+            >
+              Salir
+            </Button>
+          </div>
         </div>
         <nav className="mx-auto mt-3 flex max-w-lg gap-2">
           <Link
@@ -63,11 +66,14 @@ export function DriverShell({
         </nav>
       </header>
       <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4">
-        <PushPermissionBanner
-          audience="driver"
-          title="Avisos de nuevos repartos"
-          description="Permite notificaciones para enterarte al instante cuando te asignen un pedido, aunque la app esté en segundo plano."
-        />
+        <div className="space-y-3">
+          <DriverGpsSession driverId={driverId} />
+          <PushPermissionBanner
+            audience="driver"
+            title="Avisos de nuevos repartos"
+            description="Permite notificaciones para enterarte al instante cuando te asignen un pedido, aunque la app esté en segundo plano."
+          />
+        </div>
         <div className="mt-4">{children}</div>
       </main>
     </div>

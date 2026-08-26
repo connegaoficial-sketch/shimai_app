@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { DEFAULT_DELIVERY_CONFIG } from "@/lib/delivery/default-config";
-import { getDeliveryPublicGeo } from "@/lib/delivery/quote-from-settings";
 import {
   isInMexicoBounds,
   MEXICO_PHOTON_BBOX,
 } from "@/lib/delivery/mexico-bounds";
+import { getDeliveryPublicGeo } from "@/lib/delivery/quote-from-settings";
+import { googleAddressSearch } from "@/lib/maps/google-geocode";
 
 export const runtime = "nodejs";
 
@@ -51,8 +52,7 @@ function formatPhotonLabel(feature: PhotonFeature): string {
 
 /**
  * Address autocomplete for checkout.
- * Biases results near the Dark Kitchen using server-only coordinates
- * (never returned to the client).
+ * Prefers Google Places (GOOGLE_MAPS_API_KEY); falls back to Photon/Nominatim.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -72,6 +72,25 @@ export async function GET(request: Request) {
     maxRadiusKm = Math.max(geo.maxRadiusKm * 2.5, 5);
   }
 
+  const googleHits = await googleAddressSearch({
+    query: q,
+    biasLat: kitchenLat,
+    biasLng: kitchenLng,
+    radiusMeters: maxRadiusKm * 1000,
+  });
+
+  if (googleHits !== null) {
+    return NextResponse.json({
+      results: googleHits.map((hit) => ({
+        id: hit.id,
+        label: hit.label,
+        lat: hit.lat,
+        lng: hit.lng,
+      })),
+      provider: "google",
+    });
+  }
+
   const { dLat, dLng } = degDeltaForKm(maxRadiusKm, kitchenLat);
   const viewbox = [
     kitchenLng - dLng,
@@ -85,16 +104,15 @@ export async function GET(request: Request) {
     "User-Agent": "SHIMAI-Sushi-House/1.0 (checkout address autocomplete)",
   };
 
-  // Photon first (better street matching), then Nominatim
-  const photonUrl = new URL("https://photon.komoot.io/api/");
-  photonUrl.searchParams.set("q", q);
-  photonUrl.searchParams.set("lang", "es");
-  photonUrl.searchParams.set("limit", "7");
-  photonUrl.searchParams.set("lat", String(kitchenLat));
-  photonUrl.searchParams.set("lon", String(kitchenLng));
-  photonUrl.searchParams.set("bbox", MEXICO_PHOTON_BBOX);
-
   try {
+    const photonUrl = new URL("https://photon.komoot.io/api/");
+    photonUrl.searchParams.set("q", q);
+    photonUrl.searchParams.set("lang", "es");
+    photonUrl.searchParams.set("limit", "7");
+    photonUrl.searchParams.set("lat", String(kitchenLat));
+    photonUrl.searchParams.set("lon", String(kitchenLng));
+    photonUrl.searchParams.set("bbox", MEXICO_PHOTON_BBOX);
+
     const photonRes = await fetch(photonUrl.toString(), {
       headers,
       next: { revalidate: 0 },
@@ -124,7 +142,7 @@ export async function GET(request: Request) {
         .filter((row): row is NonNullable<typeof row> => row !== null);
 
       if (results.length > 0) {
-        return NextResponse.json({ results });
+        return NextResponse.json({ results, provider: "photon" });
       }
     }
   } catch {
@@ -162,5 +180,5 @@ export async function GET(request: Request) {
     }))
     .filter((item) => isInMexicoBounds(item.lat, item.lng));
 
-  return NextResponse.json({ results });
+  return NextResponse.json({ results, provider: "nominatim" });
 }

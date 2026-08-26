@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 
+import { PwaInstallToast } from "@/components/public/PwaInstallToast";
 import { PwaUpdateToast } from "@/components/public/PwaUpdateToast";
 import "./globals.css";
 
@@ -72,6 +73,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-dvh flex-col overflow-x-clip bg-shimai-black font-sans text-shimai-ivory touch-manipulation">
         {children}
+        <PwaInstallToast />
         <PwaUpdateToast />
       </body>
     </html>

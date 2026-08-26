@@ -10,10 +10,11 @@ import {
   startDelivery,
 } from "@/app/(driver)/driver/(panel)/actions";
 import { SlideToConfirm } from "@/components/driver/SlideToConfirm";
-import { useDriverGpsPush } from "@/hooks/useDriverGpsPush";
 import { PAYMENT_METHOD_LABELS } from "@/lib/admin/labels";
 import { formatMxn } from "@/lib/format";
 import type { Order, OrderItem, PaymentMethod, PaymentStatus } from "@/types/database";
+
+const REQUEST_GPS_EVENT = "shimai:request-gps";
 
 type DriverOrderDetailProps = {
   order: Order;
@@ -39,7 +40,6 @@ export function DriverOrderDetail({
   );
 
   const gpsActive = status === "in_transit";
-  const gpsWarning = useDriverGpsPush({ orderId: order.id, active: gpsActive });
 
   const collectOnDelivery =
     order.payment_method === "cash" ||
@@ -150,19 +150,10 @@ export function DriverOrderDetail({
       </section>
 
       {gpsActive ? (
-        <div className="space-y-2">
-          <p className="rounded-md border border-shimai-gold/30 bg-shimai-gold/10 px-3 py-3 font-sans text-sm text-shimai-gold">
-            GPS activo — compartiendo ubicación cada 5s
-          </p>
-          {gpsWarning ? (
-            <p
-              className="rounded-md border border-seal-red/40 bg-seal-red/10 px-3 py-3 font-sans text-sm text-seal-red"
-              role="alert"
-            >
-              {gpsWarning}
-            </p>
-          ) : null}
-        </div>
+        <p className="rounded-md border border-shimai-gold/30 bg-shimai-gold/10 px-3 py-3 font-sans text-sm text-shimai-gold">
+          En tránsito — el GPS del panel está compartiendo tu ubicación con el
+          cliente
+        </p>
       ) : null}
 
       <p className="break-all font-sans text-[11px] text-shimai-ivory/35">
@@ -183,6 +174,7 @@ export function DriverOrderDetail({
             pending={pending}
             variant="gold"
             onConfirm={async () => {
+              window.dispatchEvent(new Event(REQUEST_GPS_EVENT));
               const result = await run(() => startDelivery(order.id));
               if (result.ok) setStatus("in_transit");
               if (!result.ok) throw new Error(result.error);

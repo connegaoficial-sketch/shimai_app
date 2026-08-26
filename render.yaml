@@ -44,3 +44,33 @@ services:
       # Supabase → Project Settings → API → service_role (JWT, starts with eyJ).
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+
+      # Google Maps (Axius) — Places + Geocoding + Maps JavaScript API
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+
+      # Push retry worker (set same value on cron job Authorization header)
+      - key: CRON_SECRET
+        generateValue: true
+
+  - type: cron
+    name: shimai-push-dispatch
+    runtime: node
+    region: ohio
+    plan: starter
+    schedule: "*/1 * * * *"
+    buildCommand: echo "cron"
+    startCommand: node -e "fetch(process.env.SHIMAI_APP_URL+'/api/push/dispatch',{method:'POST',headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.text()).then(console.log).catch(e=>{console.error(e);process.exit(1)})"
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: SHIMAI_APP_URL
+        fromService:
+          name: shimai
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: CRON_SECRET
+        fromService:
+          name: shimai
+          type: web
+          envVarKey: CRON_SECRET

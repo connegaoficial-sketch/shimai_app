@@ -1,28 +1,27 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 
 import { Button } from "@/components/ui/button";
 import {
   isInMexicoBounds,
   OUTSIDE_MEXICO_MESSAGE,
 } from "@/lib/delivery/mexico-bounds";
-import { isMapAlive, safeInvalidateSize, safeSetMarkerLatLng } from "@/lib/maps/leaflet-guards";
-import { addDeliveryTiles } from "@/lib/maps/tiles";
+import {
+  loadGoogleMaps,
+  SHIMAI_MAP_STYLES,
+} from "@/lib/maps/load-google-maps";
 import { cn } from "@/lib/utils";
 
 const FALLBACK_CENTER = { lat: 21.916146, lng: -99.9900263, zoom: 14 };
 
-function pinIcon() {
-  return L.divIcon({
-    className: "",
-    html: `<div style="width:22px;height:22px;border-radius:9999px 9999px 9999px 0;background:#C9A45C;border:2px solid #1a1a1a;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 22],
-  });
-}
+const PIN_SVG = encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+    <path fill="#C9A45C" stroke="#1a1a1a" stroke-width="1.5"
+      d="M14 1c-6.6 0-12 5.2-12 11.6 0 8.7 12 21.4 12 21.4S26 21.3 26 12.6C26 6.2 20.6 1 14 1z"/>
+    <circle cx="14" cy="12.5" r="4.2" fill="#1a1a1a"/>
+  </svg>`,
+);
 
 export type MapPinPosition = {
   lat: number;
@@ -43,10 +42,13 @@ export function DeliveryPinMap({
   className,
 }: DeliveryPinMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markerRef = useRef<google.maps.Marker | null>(null);
+  const mapsApiRef = useRef<typeof google.maps | null>(null);
   const onPositionChangeRef = useRef(onPositionChange);
   const disabledRef = useRef(disabled);
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
 
@@ -56,136 +58,153 @@ export function DeliveryPinMap({
 
   useEffect(() => {
     disabledRef.current = disabled;
-    const marker = markerRef.current;
-    if (!marker?.dragging) return;
-    if (disabled) marker.dragging.disable();
-    else marker.dragging.enable();
+    markerRef.current?.setDraggable(!disabled);
   }, [disabled]);
-
-  useEffect(() => {
-    void fetch("/api/delivery/map-center")
-      .then((res) => res.json())
-      .then((data: { lat?: number; lng?: number; zoom?: number }) => {
-        const map = mapRef.current;
-        if (
-          !isMapAlive(map) ||
-          typeof data.lat !== "number" ||
-          typeof data.lng !== "number" ||
-          !isInMexicoBounds(data.lat, data.lng)
-        ) {
-          return;
-        }
-        map.setView([data.lat, data.lng], data.zoom ?? 14);
-      })
-      .catch(() => undefined);
-  }, []);
 
   const setMarkerAt = useCallback((lat: number, lng: number, pan = true) => {
     const map = mapRef.current;
-    if (!isMapAlive(map)) return;
+    const maps = mapsApiRef.current;
+    if (!map || !maps) return;
+
+    const latLng = { lat, lng };
 
     if (!markerRef.current) {
-      markerRef.current = L.marker([lat, lng], {
-        icon: pinIcon(),
+      markerRef.current = new maps.Marker({
+        map,
+        position: latLng,
         draggable: !disabledRef.current,
-      }).addTo(map);
+        icon: {
+          url: `data:image/svg+xml;charset=UTF-8,${PIN_SVG}`,
+          scaledSize: new maps.Size(28, 36),
+          anchor: new maps.Point(14, 36),
+        },
+        title: "Tu entrega",
+      });
 
-      markerRef.current.on("dragend", () => {
-        const ll = markerRef.current?.getLatLng();
-        if (!ll) return;
-        if (!isInMexicoBounds(ll.lat, ll.lng)) {
+      markerRef.current.addListener("dragend", () => {
+        const pos = markerRef.current?.getPosition();
+        if (!pos) return;
+        const next = { lat: pos.lat(), lng: pos.lng() };
+        if (!isInMexicoBounds(next.lat, next.lng)) {
           setGeoError(OUTSIDE_MEXICO_MESSAGE);
           return;
         }
         setGeoError(null);
-        onPositionChangeRef.current({ lat: ll.lat, lng: ll.lng }, "map");
+        onPositionChangeRef.current(next, "map");
       });
     } else {
-      safeSetMarkerLatLng(markerRef.current, lat, lng);
-    }
-
-    if (disabledRef.current && markerRef.current.dragging) {
-      markerRef.current.dragging.disable();
+      markerRef.current.setPosition(latLng);
     }
 
     if (pan) {
-      try {
-        safeInvalidateSize(map);
-        map.setView([lat, lng], Math.max(map.getZoom(), 16), { animate: false });
-      } catch {
-        // map torn down mid-update
-      }
+      map.panTo(latLng);
+      const zoom = map.getZoom() ?? FALLBACK_CENTER.zoom;
+      if (zoom < 16) map.setZoom(16);
     }
   }, []);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    let cancelled = false;
+    let clickListener: google.maps.MapsEventListener | null = null;
 
-    const map = L.map(containerRef.current, {
-      zoomControl: false,
-      attributionControl: true,
-    }).setView(
-      [FALLBACK_CENTER.lat, FALLBACK_CENTER.lng],
-      FALLBACK_CENTER.zoom,
-    );
+    async function init() {
+      if (!containerRef.current) return;
 
-    addDeliveryTiles(map);
-    L.control.zoom({ position: "bottomright" }).addTo(map);
+      try {
+        const maps = await loadGoogleMaps();
+        if (cancelled || !containerRef.current) return;
+        mapsApiRef.current = maps;
 
-    map.on("click", (event) => {
-      if (disabledRef.current) return;
-      const { lat, lng } = event.latlng;
-      if (!isInMexicoBounds(lat, lng)) {
-        setGeoError(OUTSIDE_MEXICO_MESSAGE);
-        return;
+        let center = {
+          lat: FALLBACK_CENTER.lat,
+          lng: FALLBACK_CENTER.lng,
+        };
+        let zoom = FALLBACK_CENTER.zoom;
+
+        try {
+          const centerRes = await fetch("/api/delivery/map-center");
+          if (centerRes.ok) {
+            const data = (await centerRes.json()) as {
+              lat?: number;
+              lng?: number;
+              zoom?: number;
+            };
+            if (
+              typeof data.lat === "number" &&
+              typeof data.lng === "number" &&
+              isInMexicoBounds(data.lat, data.lng)
+            ) {
+              center = { lat: data.lat, lng: data.lng };
+              zoom = data.zoom ?? 14;
+            }
+          }
+        } catch {
+          // keep fallback
+        }
+
+        if (cancelled || !containerRef.current) return;
+
+        const map = new maps.Map(containerRef.current, {
+          center,
+          zoom,
+          disableDefaultUI: true,
+          zoomControl: true,
+          zoomControlOptions: {
+            position: maps.ControlPosition.RIGHT_BOTTOM,
+          },
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          clickableIcons: false,
+          gestureHandling: "greedy",
+          styles: SHIMAI_MAP_STYLES,
+        });
+
+        mapRef.current = map;
+
+        clickListener = map.addListener(
+          "click",
+          (event: google.maps.MapMouseEvent) => {
+            if (disabledRef.current) return;
+            const lat = event.latLng?.lat();
+            const lng = event.latLng?.lng();
+            if (typeof lat !== "number" || typeof lng !== "number") return;
+            if (!isInMexicoBounds(lat, lng)) {
+              setGeoError(OUTSIDE_MEXICO_MESSAGE);
+              return;
+            }
+            setGeoError(null);
+            setMarkerAt(lat, lng, false);
+            onPositionChangeRef.current({ lat, lng }, "map");
+          },
+        );
+
+        setReady(true);
+        setLoadError(null);
+      } catch (error) {
+        if (cancelled) return;
+        console.error("[DeliveryPinMap]", error);
+        setLoadError(
+          "No se pudo cargar Google Maps. Activa Maps JavaScript API en Google Cloud (Axius).",
+        );
       }
-      setGeoError(null);
-      setMarkerAt(lat, lng, false);
-      onPositionChangeRef.current({ lat, lng }, "map");
-    });
+    }
 
-    mapRef.current = map;
-
-    const refreshSize = () => safeInvalidateSize(mapRef.current);
-    map.whenReady(refreshSize);
-    const raf = window.requestAnimationFrame(refreshSize);
-    const timeout = window.setTimeout(refreshSize, 250);
-    window.addEventListener("resize", refreshSize);
-    window.addEventListener("orientationchange", refreshSize);
-    window.visualViewport?.addEventListener("resize", refreshSize);
-
-    const observer =
-      typeof ResizeObserver !== "undefined" && containerRef.current
-        ? new ResizeObserver(refreshSize)
-        : null;
-    if (observer && containerRef.current) observer.observe(containerRef.current);
+    void init();
 
     return () => {
-      window.cancelAnimationFrame(raf);
-      window.clearTimeout(timeout);
-      window.removeEventListener("resize", refreshSize);
-      window.removeEventListener("orientationchange", refreshSize);
-      window.visualViewport?.removeEventListener("resize", refreshSize);
-      observer?.disconnect();
+      cancelled = true;
+      clickListener?.remove();
+      markerRef.current?.setMap(null);
       markerRef.current = null;
       mapRef.current = null;
-      map.remove();
     };
   }, [setMarkerAt]);
 
   useEffect(() => {
-    if (!position || !mapRef.current) return;
-    const map = mapRef.current;
-    const { lat, lng } = position;
-
-    const apply = () => {
-      if (!isMapAlive(mapRef.current)) return;
-      setMarkerAt(lat, lng, true);
-    };
-
-    if (map.whenReady) map.whenReady(apply);
-    else apply();
-  }, [position, setMarkerAt]);
+    if (!ready || !position) return;
+    setMarkerAt(position.lat, position.lng, true);
+  }, [position, ready, setMarkerAt]);
 
   function useMyLocation() {
     if (disabled || !navigator.geolocation) {
@@ -212,8 +231,6 @@ export function DeliveryPinMap({
         setMarkerAt(lat, lng, true);
         onPositionChange({ lat, lng }, "gps");
         setLocating(false);
-        window.setTimeout(() => safeInvalidateSize(mapRef.current), 80);
-        window.setTimeout(() => safeInvalidateSize(mapRef.current), 320);
       },
       (err) => {
         setLocating(false);
@@ -236,7 +253,7 @@ export function DeliveryPinMap({
           type="button"
           variant="outline"
           size="sm"
-          disabled={disabled || locating}
+          disabled={disabled || locating || !ready}
           onClick={useMyLocation}
           className="font-sans text-xs tracking-wide"
         >
@@ -247,6 +264,12 @@ export function DeliveryPinMap({
         </p>
       </div>
 
+      {loadError ? (
+        <p className="font-sans text-xs text-seal-red/90" role="alert">
+          {loadError}
+        </p>
+      ) : null}
+
       {geoError ? (
         <p className="font-sans text-xs text-seal-red/90" role="alert">
           {geoError}
@@ -255,10 +278,15 @@ export function DeliveryPinMap({
 
       <div
         className={cn(
-          "relative h-56 w-full overflow-hidden rounded-md border border-white/[0.12] bg-[#e8e4dc] sm:h-64",
+          "relative h-56 w-full overflow-hidden rounded-md border border-white/[0.12] bg-[#1c1c1c] sm:h-64",
           disabled && "pointer-events-none opacity-60",
         )}
       >
+        {!ready && !loadError ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center font-sans text-sm text-shimai-ivory/40">
+            Cargando Google Maps…
+          </div>
+        ) : null}
         <div
           ref={containerRef}
           className="absolute inset-0 h-full w-full"
@@ -268,7 +296,7 @@ export function DeliveryPinMap({
 
       {position ? (
         <p className="font-sans text-[11px] text-shimai-ivory/40">
-          Pin: {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
+          Pin: {position.lat.toFixed(5)}, {position.lng.toFixed(5)} · Google Maps
         </p>
       ) : null}
     </div>

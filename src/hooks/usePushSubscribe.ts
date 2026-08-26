@@ -71,6 +71,7 @@ export function usePushSubscribe({
           endpoint: json.endpoint,
           p256dh: json.keys.p256dh,
           auth: json.keys.auth,
+          userAgent: navigator.userAgent,
         }),
       });
 

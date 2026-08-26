@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type UseLiveRefreshOptions = {
   /** Postgres table to watch */
-  table: "orders" | "driver_notifications" | "client_notifications";
+  table: "orders" | "notifications";
   /** Optional Realtime filter, e.g. driver_id=eq.uuid */
   filter?: string;
   /** Poll interval when tab visible (ms). Default 3000. */

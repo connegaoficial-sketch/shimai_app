@@ -417,47 +417,107 @@ export type Database = {
           },
         ];
       };
-      driver_notifications: {
+      notifications: {
         Row: {
           id: string;
-          driver_id: string;
+          audience: "driver" | "client";
+          recipient_id: string | null;
           order_id: string | null;
           kind: string;
           title: string;
           body: string;
-          read_at: string | null;
+          link: string | null;
+          is_read: boolean;
+          metadata: Json;
+          dedup_key: string | null;
+          push_sent_at: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
-          driver_id: string;
+          audience: "driver" | "client";
+          recipient_id?: string | null;
           order_id?: string | null;
-          kind?: string;
+          kind: string;
           title: string;
           body: string;
-          read_at?: string | null;
+          link?: string | null;
+          is_read?: boolean;
+          metadata?: Json;
+          dedup_key?: string | null;
+          push_sent_at?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
-          driver_id?: string;
+          audience?: "driver" | "client";
+          recipient_id?: string | null;
           order_id?: string | null;
           kind?: string;
           title?: string;
           body?: string;
-          read_at?: string | null;
+          link?: string | null;
+          is_read?: boolean;
+          metadata?: Json;
+          dedup_key?: string | null;
+          push_sent_at?: string | null;
           created_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "driver_notifications_driver_id_fkey";
-            columns: ["driver_id"];
+            foreignKeyName: "notifications_recipient_id_fkey";
+            columns: ["recipient_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "driver_notifications_order_id_fkey";
+            foreignKeyName: "notifications_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notification_prefs: {
+        Row: {
+          id: string;
+          audience: "driver" | "client";
+          recipient_id: string | null;
+          order_id: string | null;
+          kind: string;
+          enabled: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          audience: "driver" | "client";
+          recipient_id?: string | null;
+          order_id?: string | null;
+          kind: string;
+          enabled?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          audience?: "driver" | "client";
+          recipient_id?: string | null;
+          order_id?: string | null;
+          kind?: string;
+          enabled?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_prefs_recipient_id_fkey";
+            columns: ["recipient_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notification_prefs_order_id_fkey";
             columns: ["order_id"];
             isOneToOne: false;
             referencedRelation: "orders";
@@ -472,6 +532,8 @@ export type Database = {
           endpoint: string;
           p256dh: string;
           auth: string;
+          user_agent: string | null;
+          updated_at: string;
           created_at: string;
         };
         Insert: {
@@ -480,6 +542,8 @@ export type Database = {
           endpoint: string;
           p256dh: string;
           auth: string;
+          user_agent?: string | null;
+          updated_at?: string;
           created_at?: string;
         };
         Update: {
@@ -488,6 +552,8 @@ export type Database = {
           endpoint?: string;
           p256dh?: string;
           auth?: string;
+          user_agent?: string | null;
+          updated_at?: string;
           created_at?: string;
         };
         Relationships: [
@@ -500,44 +566,6 @@ export type Database = {
           },
         ];
       };
-      client_notifications: {
-        Row: {
-          id: string;
-          order_id: string;
-          kind: string;
-          title: string;
-          body: string;
-          read_at: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          order_id: string;
-          kind: string;
-          title: string;
-          body: string;
-          read_at?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          order_id?: string;
-          kind?: string;
-          title?: string;
-          body?: string;
-          read_at?: string | null;
-          created_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "client_notifications_order_id_fkey";
-            columns: ["order_id"];
-            isOneToOne: false;
-            referencedRelation: "orders";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       client_push_subscriptions: {
         Row: {
           id: string;
@@ -545,6 +573,8 @@ export type Database = {
           endpoint: string;
           p256dh: string;
           auth: string;
+          user_agent: string | null;
+          updated_at: string;
           created_at: string;
         };
         Insert: {
@@ -553,6 +583,8 @@ export type Database = {
           endpoint: string;
           p256dh: string;
           auth: string;
+          user_agent?: string | null;
+          updated_at?: string;
           created_at?: string;
         };
         Update: {
@@ -561,6 +593,8 @@ export type Database = {
           endpoint?: string;
           p256dh?: string;
           auth?: string;
+          user_agent?: string | null;
+          updated_at?: string;
           created_at?: string;
         };
         Relationships: [

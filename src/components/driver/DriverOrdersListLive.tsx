@@ -15,8 +15,8 @@ export function DriverOrdersListLive({
 }) {
   useLiveRefresh({ table: "orders", pollMs: 3000 });
   useLiveRefresh({
-    table: "driver_notifications",
-    filter: `driver_id=eq.${driverId}`,
+    table: "notifications",
+    filter: `recipient_id=eq.${driverId}`,
     pollMs: 3000,
   });
 

@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
 import { PushPermissionBanner } from "@/components/pwa/PushPermissionBanner";
-import { ClientNotificationListener } from "@/components/tracker/ClientNotificationListener";
+import { ClientNotificationCenter } from "@/components/tracker/ClientNotificationCenter";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 import { createClient } from "@/lib/supabase/client";
 import type { OrderStatus } from "@/types/database";
@@ -146,7 +146,7 @@ export function TrackerClient({
   const supabase = useMemo(() => createClient(), []);
 
   useLiveRefresh({
-    table: "client_notifications",
+    table: "notifications",
     filter: `order_id=eq.${orderId}`,
     pollMs: 3000,
     enabled: status !== "delivered" && status !== "cancelled",
@@ -245,11 +245,13 @@ export function TrackerClient({
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-shimai-black text-shimai-ivory">
-      <ClientNotificationListener orderId={orderId} />
       <header className="shrink-0 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]">
-        <p className="font-serif text-lg tracking-wide text-shimai-ivory">
-          SHIMAI
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-serif text-lg tracking-wide text-shimai-ivory">
+            SHIMAI
+          </p>
+          <ClientNotificationCenter orderId={orderId} />
+        </div>
       </header>
 
       <div className="min-h-0 flex-[0.7]">

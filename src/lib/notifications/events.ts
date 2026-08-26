@@ -85,6 +85,6 @@ export function copyDriverNearby(orderId: string): NotificationPayload {
     title: "Tu repartidor está cerca",
     body: "Llegará en unos minutos — ten listo tu pedido.",
     url: `/tracker/${orderId}`,
-    tag: `order-${orderId}-nearby`,
+    // No permanent tag: cooldown is enforced in maybeNotifyDriverNearby
   };
 }

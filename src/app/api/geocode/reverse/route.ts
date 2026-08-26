@@ -4,6 +4,7 @@ import {
   formatCoordsLabel,
   isInMexicoBounds,
 } from "@/lib/delivery/mexico-bounds";
+import { googleReverseGeocode } from "@/lib/maps/google-geocode";
 
 export const runtime = "nodejs";
 
@@ -12,16 +13,7 @@ type NominatimReverse = {
   address?: Record<string, string>;
 };
 
-export type ParsedAddress = {
-  street: string | null;
-  houseNumber: string | null;
-  neighbourhood: string | null;
-  city: string | null;
-  state: string | null;
-  label: string;
-};
-
-function parseAddress(address: Record<string, string>): ParsedAddress {
+function parseNominatimAddress(address: Record<string, string>) {
   const street =
     address.road ||
     address.pedestrian ||
@@ -62,6 +54,7 @@ function parseAddress(address: Record<string, string>): ParsedAddress {
 
 /**
  * Reverse geocode for map pin / GPS — Mexico only.
+ * Prefers Google Geocoding; falls back to Nominatim.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -86,6 +79,20 @@ export async function GET(request: Request) {
     });
   }
 
+  const google = await googleReverseGeocode({ lat, lng });
+  if (google) {
+    return NextResponse.json({
+      label: google.label,
+      street: google.street ?? null,
+      house_number: google.houseNumber ?? null,
+      neighbourhood: google.neighbourhood ?? null,
+      city: google.city ?? null,
+      lat,
+      lng,
+      provider: "google",
+    });
+  }
+
   const url = new URL("https://nominatim.openstreetmap.org/reverse");
   url.searchParams.set("lat", String(lat));
   url.searchParams.set("lon", String(lng));
@@ -104,13 +111,13 @@ export async function GET(request: Request) {
     });
 
     if (!response.ok) {
-      const fallback = formatCoordsLabel(lat, lng);
       return NextResponse.json({
-        label: fallback,
+        label: formatCoordsLabel(lat, lng),
         street: null,
         house_number: null,
         lat,
         lng,
+        provider: "fallback",
       });
     }
 
@@ -129,7 +136,7 @@ export async function GET(request: Request) {
     }
 
     if (data.address) {
-      const parsed = parseAddress(data.address);
+      const parsed = parseNominatimAddress(data.address);
       return NextResponse.json({
         label: parsed.label || data.display_name || formatCoordsLabel(lat, lng),
         street: parsed.street,
@@ -138,6 +145,7 @@ export async function GET(request: Request) {
         city: parsed.city,
         lat,
         lng,
+        provider: "nominatim",
       });
     }
 
@@ -147,6 +155,7 @@ export async function GET(request: Request) {
       house_number: null,
       lat,
       lng,
+      provider: "nominatim",
     });
   } catch {
     return NextResponse.json({
@@ -155,6 +164,7 @@ export async function GET(request: Request) {
       house_number: null,
       lat,
       lng,
+      provider: "fallback",
     });
   }
 }

@@ -10,6 +10,25 @@ type PushSubscriptionRow = {
   auth: string;
 };
 
+/** Absolute asset URLs — Android push often ignores relative icon paths. */
+function appOrigin(): string {
+  const raw =
+    process.env.SHIMAI_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    "https://shimai.onrender.com";
+  return raw.replace(/\/$/, "");
+}
+
+function pushAssetUrls() {
+  const origin = appOrigin();
+  return {
+    icon: `${origin}/icon-192x192.png`,
+    badge: `${origin}/icon-192x192.png`,
+    image: `${origin}/logo_shimai.jpeg`,
+  };
+}
+
 export async function sendWebPushToSubscriptions(
   subscriptions: PushSubscriptionRow[],
   payload: NotificationPayload,
@@ -21,15 +40,20 @@ export async function sendWebPushToSubscriptions(
 
   webpush.setVapidDetails(vapid.subject, vapid.publicKey, vapid.privateKey);
 
+  const assets = pushAssetUrls();
   const body = JSON.stringify({
     title: payload.title,
     body: payload.body,
     url: payload.url,
     tag: payload.tag,
+    icon: assets.icon,
+    badge: assets.badge,
+    image: assets.image,
   });
 
   let sent = 0;
   let failed = 0;
+  const service = createServiceRoleClient();
 
   await Promise.all(
     subscriptions.map(async (sub) => {
@@ -46,7 +70,6 @@ export async function sendWebPushToSubscriptions(
         failed += 1;
         const status = (error as { statusCode?: number }).statusCode;
         if (status === 404 || status === 410) {
-          const service = createServiceRoleClient();
           await service
             .from("driver_push_subscriptions")
             .delete()

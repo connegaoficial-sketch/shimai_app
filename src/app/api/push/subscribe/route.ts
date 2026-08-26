@@ -8,6 +8,7 @@ type SubscribeBody = {
   endpoint?: string;
   p256dh?: string;
   auth?: string;
+  userAgent?: string;
 };
 
 export async function POST(request: Request) {
@@ -23,7 +24,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Faltan campos" }, { status: 400 });
   }
 
+  const userAgent =
+    body.userAgent?.slice(0, 400) ||
+    request.headers.get("user-agent")?.slice(0, 400) ||
+    null;
+
   const supabase = await createClient();
+  const now = new Date().toISOString();
 
   if (audience === "driver") {
     const { data: claims } = await supabase.auth.getClaims();
@@ -48,6 +55,8 @@ export async function POST(request: Request) {
         endpoint,
         p256dh,
         auth,
+        user_agent: userAgent,
+        updated_at: now,
       },
       { onConflict: "endpoint" },
     );
@@ -80,6 +89,8 @@ export async function POST(request: Request) {
         endpoint,
         p256dh,
         auth,
+        user_agent: userAgent,
+        updated_at: now,
       },
       { onConflict: "endpoint" },
     );

@@ -41,8 +41,9 @@ export async function maybeNotifyDriverNearby(input: {
 
   const since = new Date(Date.now() - NEARBY_COOLDOWN_MS).toISOString();
   const { data: recent } = await input.supabase
-    .from("client_notifications")
+    .from("notifications")
     .select("id")
+    .eq("audience", "client")
     .eq("order_id", input.orderId)
     .eq("kind", "driver_nearby")
     .gte("created_at", since)
