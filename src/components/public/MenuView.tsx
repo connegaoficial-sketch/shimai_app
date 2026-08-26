@@ -143,7 +143,7 @@ export function MenuView({ categories, products, promos = [] }: MenuViewProps) {
       </header>
 
       {categories.length > 0 ? (
-        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-20 -mx-4 mb-8 border-b border-white/[0.06] bg-shimai-black/92 px-4 backdrop-blur-md sm:top-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:-mx-6 sm:px-6">
+        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-20 -mx-4 mb-8 bg-shimai-black/92 px-4 backdrop-blur-md sm:top-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:-mx-6 sm:px-6">
           <nav
             aria-label="Categorías"
             className="flex gap-1 overflow-x-auto overscroll-x-contain py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

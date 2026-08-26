@@ -9,7 +9,7 @@ export function OrderingClosedBanner() {
   return (
     <div
       role="status"
-      className="border-b border-shimai-sakura/25 bg-shimai-sakura/[0.08]"
+      className="bg-shimai-sakura/[0.08]"
     >
       <div className="mx-auto max-w-6xl px-4 py-4 text-center sm:px-6 sm:py-5">
         <p className="font-serif text-xl tracking-tight text-shimai-ivory sm:text-2xl">

@@ -16,6 +16,9 @@ type TrackerMapProps = {
 
 const FALLBACK_CENTER = { lat: 21.916146, lng: -99.9900263 };
 
+/** Re-fit when distance shrinks by this fraction (progressive zoom-in). */
+const APPROACH_REFIT_RATIO = 0.88;
+
 /** Destination — sakura house pin */
 const CUSTOMER_PIN = encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
@@ -25,7 +28,7 @@ const CUSTOMER_PIN = encodeURIComponent(
   </svg>`,
 );
 
-/** Driver — gold map pin with scooter silhouette (clearly not a plain dot) */
+/** Driver — gold map pin with scooter (no CSS halo) */
 const DRIVER_PIN = encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" viewBox="0 0 40 48">
     <path fill="#C9A45C" stroke="#1a1a1a" stroke-width="1.8"
@@ -37,12 +40,26 @@ const DRIVER_PIN = encodeURIComponent(
   </svg>`,
 );
 
+function haversineMeters(a: LatLng, b: LatLng): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
 export function TrackerMap({ customer, driver }: TrackerMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const mapsApiRef = useRef<typeof google.maps | null>(null);
   const driverMarkerRef = useRef<google.maps.Marker | null>(null);
   const customerMarkerRef = useRef<google.maps.Marker | null>(null);
+  const lastApproachMetersRef = useRef<number | null>(null);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -60,6 +77,8 @@ export function TrackerMap({ customer, driver }: TrackerMapProps) {
         const map = new maps.Map(containerRef.current, {
           center,
           zoom: 15,
+          minZoom: 12,
+          maxZoom: 18,
           disableDefaultUI: true,
           zoomControl: true,
           zoomControlOptions: {
@@ -91,6 +110,7 @@ export function TrackerMap({ customer, driver }: TrackerMapProps) {
       customerMarkerRef.current?.setMap(null);
       driverMarkerRef.current = null;
       customerMarkerRef.current = null;
+      lastApproachMetersRef.current = null;
       mapRef.current = null;
     };
   }, []);
@@ -137,18 +157,32 @@ export function TrackerMap({ customer, driver }: TrackerMapProps) {
       }
     }
 
-    const points: LatLng[] = [];
-    if (customer) points.push(customer);
-    if (driver) points.push(driver);
+    if (customer && driver) {
+      const meters = haversineMeters(customer, driver);
+      const last = lastApproachMetersRef.current;
+      const view = map.getBounds();
+      const outOfView =
+        !!view && (!view.contains(customer) || !view.contains(driver));
+      const firstFrame = last == null;
+      const gotCloser =
+        last != null && meters < last * APPROACH_REFIT_RATIO;
 
-    if (points.length >= 2) {
-      const bounds = new maps.LatLngBounds();
-      for (const p of points) bounds.extend(p);
-      map.fitBounds(bounds, 64);
-    } else if (points.length === 1) {
-      map.panTo(points[0]);
+      if (firstFrame || gotCloser || outOfView) {
+        const bounds = new maps.LatLngBounds();
+        bounds.extend(customer);
+        bounds.extend(driver);
+        map.fitBounds(bounds, 64);
+        lastApproachMetersRef.current = meters;
+      }
+      return;
+    }
+
+    const alone = customer ?? driver;
+    if (alone && lastApproachMetersRef.current == null) {
+      map.panTo(alone);
       const zoom = map.getZoom() ?? 15;
       if (zoom < 15) map.setZoom(15);
+      lastApproachMetersRef.current = 0;
     }
   }, [customer, driver, ready]);
 

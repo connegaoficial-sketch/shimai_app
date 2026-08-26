@@ -124,37 +124,28 @@ export function TrustStrip({
   return (
     <section
       aria-label="Cómo pedimos y entregamos"
-      className="relative border-b border-white/[0.06] bg-shimai-surface/50"
+      className="relative bg-shimai-black"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-shimai-gold/40 to-transparent"
-      />
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px bg-white/[0.06] md:grid-cols-4">
+      {/* Same plane as hero/promo — typography grid, no surface band or cell chrome */}
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-10 gap-y-9 px-4 pb-12 pt-2 sm:gap-x-12 sm:px-6 sm:pb-14 md:grid-cols-4 md:gap-x-8">
         {items.map(({ Icon, label, value, detail }, index) => (
           <div
             key={label}
-            className="shimai-trust-cell animate-shimai-fade-up flex flex-col gap-2.5 bg-shimai-black px-4 py-6 sm:px-5 sm:py-7"
+            className="shimai-trust-cell animate-shimai-fade-up flex flex-col gap-1.5"
             style={{ animationDelay: `${index * 70}ms` }}
           >
-            <div className="flex items-center gap-2.5 text-shimai-gold">
-              <span className="flex size-8 items-center justify-center border border-shimai-gold/25 bg-shimai-gold/5">
-                <Icon className="size-4 shrink-0" />
-              </span>
-              <span className="font-sans text-[10px] uppercase tracking-[0.22em] text-shimai-gold/85">
+            <div className="flex items-center gap-2 text-shimai-gold/85">
+              <Icon className="size-3.5 shrink-0" />
+              <span className="font-sans text-[10px] uppercase tracking-[0.22em]">
                 {label}
               </span>
             </div>
-            <p className="font-serif text-lg leading-snug break-words text-shimai-ivory sm:text-2xl">
+            <p className="font-serif text-lg leading-snug break-words text-shimai-ivory sm:text-xl">
               {value}
             </p>
-            <p className="font-sans text-xs leading-relaxed break-words text-shimai-ivory/45">
+            <p className="font-sans text-xs leading-relaxed break-words text-shimai-ivory/42">
               {detail}
             </p>
-            <span
-              aria-hidden
-              className="mt-1 h-px w-8 bg-gradient-to-r from-shimai-gold/55 to-transparent"
-            />
           </div>
         ))}
       </div>

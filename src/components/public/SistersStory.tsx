@@ -9,7 +9,7 @@ export function SistersStory({ story }: SistersStoryProps) {
   return (
     <section
       aria-labelledby="sisters-heading"
-      className="relative border-b border-white/[0.05] bg-shimai-black"
+      className="relative bg-shimai-black"
     >
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
         <header className="mb-12 max-w-xl animate-shimai-fade-up">
@@ -24,13 +24,13 @@ export function SistersStory({ story }: SistersStoryProps) {
           </p>
         </header>
 
-        <div className="grid gap-px bg-white/[0.06] md:grid-cols-3">
+        <div className="grid gap-10 md:grid-cols-3 md:gap-x-12 md:gap-y-10">
           {story.sisters.map((sister, index) => {
             const isSakura = sister.accent === "sakura";
             return (
               <article
                 key={sister.key}
-                className="animate-shimai-fade-up bg-shimai-black px-6 py-8 sm:px-8 sm:py-10"
+                className="animate-shimai-fade-up min-w-0"
                 style={{ animationDelay: `${index * 60}ms` }}
               >
                 <div className="flex items-baseline gap-3">

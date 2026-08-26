@@ -33,7 +33,7 @@ export function OrderPath() {
   return (
     <section
       aria-labelledby="order-path-heading"
-      className="border-y border-white/[0.05] bg-shimai-black"
+      className="bg-shimai-black"
     >
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
         <header className="mx-auto max-w-xl text-center">
@@ -49,12 +49,9 @@ export function OrderPath() {
           </p>
         </header>
 
-        <ol className="mt-10 grid gap-px bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-10 grid gap-8 sm:grid-cols-2 sm:gap-x-10 sm:gap-y-12 lg:grid-cols-4">
           {steps.map((step, index) => (
-            <li
-              key={step.title}
-              className="bg-shimai-black px-6 py-8 sm:px-7 sm:py-9"
-            >
+            <li key={step.title} className="min-w-0">
               <span className="font-serif text-3xl text-shimai-gold/50">
                 {index + 1}
               </span>

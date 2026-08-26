@@ -118,7 +118,7 @@ export function PromoBanner({ promos }: PromoBannerProps) {
     <section
       aria-label="Oferta de la casa"
       aria-roledescription={canSwipe ? "carrusel" : undefined}
-      className="border-b border-shimai-gold/20 bg-shimai-black"
+      className="bg-shimai-black"
     >
       <div className="relative mx-auto max-w-6xl">
         <button

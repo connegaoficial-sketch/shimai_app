@@ -170,18 +170,18 @@ export function TrackerClient({
     setRedirectIn(6);
     const tick = window.setInterval(() => {
       setRedirectIn((n) => {
-        if (n == null) return null;
-        if (n <= 1) {
-          window.clearInterval(tick);
-          router.replace("/");
-          return 0;
-        }
+        if (n == null || n <= 0) return n;
         return n - 1;
       });
     }, 1000);
 
     return () => window.clearInterval(tick);
-  }, [status, router]);
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== "delivered" || redirectIn !== 0) return;
+    router.replace("/");
+  }, [status, redirectIn, router]);
 
   useEffect(() => {
     if (displayDriverName) return;

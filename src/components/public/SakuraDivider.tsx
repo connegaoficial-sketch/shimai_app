@@ -28,8 +28,8 @@ type SakuraDividerProps = {
 };
 
 /**
- * Respiro visual entre secciones — guirnalda sakura sobre negro SHIMAI.
- * Edges dissolve with CSS mask + overlays so no hard frame lines show.
+ * Respiro visual entre secciones — sakura que se disuelve en el negro.
+ * Sin marco ni franja: máscara + fades más altos que el strip.
  */
 export function SakuraDivider({
   motif = "branches",
@@ -44,17 +44,15 @@ export function SakuraDivider({
       className={cn(
         "relative w-full overflow-hidden bg-shimai-black",
         size === "large"
-          ? "h-20 sm:h-28 md:h-32"
-          : "h-14 sm:h-20 md:h-24",
+          ? "h-16 sm:h-24 md:h-28"
+          : "h-12 sm:h-16 md:h-20",
         className,
       )}
     >
       <div
         className={cn(
-          "absolute inset-0",
-          // Soft oval dissolve — kills any residual frame at the strip bounds
-          "shimai-sakura-divider-mask",
-          size === "large" ? "opacity-70 sm:opacity-75" : "opacity-55 sm:opacity-65",
+          "absolute inset-0 shimai-sakura-divider-mask",
+          size === "large" ? "opacity-45 sm:opacity-55" : "opacity-35 sm:opacity-45",
         )}
       >
         <Image
@@ -67,19 +65,11 @@ export function SakuraDivider({
         />
       </div>
 
-      {/* Deep fade into page black — taller than the strip so seams never read */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-shimai-black via-shimai-black/80 to-transparent"
-      />
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[45%] bg-gradient-to-t from-shimai-black via-shimai-black/80 to-transparent"
-      />
-      <div
-        className="pointer-events-none absolute inset-y-0 left-0 w-[12%] bg-gradient-to-r from-shimai-black to-transparent"
-      />
-      <div
-        className="pointer-events-none absolute inset-y-0 right-0 w-[12%] bg-gradient-to-l from-shimai-black to-transparent"
-      />
+      {/* Fades taller than the strip so top/bottom never read as a hard cut */}
+      <div className="pointer-events-none absolute inset-x-0 -top-[30%] h-[70%] bg-gradient-to-b from-shimai-black via-shimai-black/90 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 -bottom-[30%] h-[70%] bg-gradient-to-t from-shimai-black via-shimai-black/90 to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-[18%] bg-gradient-to-r from-shimai-black to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-[18%] bg-gradient-to-l from-shimai-black to-transparent" />
     </div>
   );
 }

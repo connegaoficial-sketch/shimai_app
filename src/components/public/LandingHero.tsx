@@ -15,7 +15,7 @@ export function LandingHero() {
   return (
     <section
       aria-labelledby="hero-heading"
-      className="relative overflow-hidden border-b border-white/[0.05]"
+      className="relative overflow-hidden"
     >
       {/* Full-bleed cinematic stage — logo/video owns the first plane */}
       <div className="relative w-full">
@@ -27,7 +27,7 @@ export function LandingHero() {
         />
       </div>
 
-      <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 pb-12 pt-2 text-center sm:px-6 sm:pb-16 md:pb-20">
+      <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 pb-8 pt-2 text-center sm:px-6 sm:pb-10 md:pb-12">
         <div
           className="animate-shimai-fade-up max-w-md space-y-3"
           style={{ animationDelay: "120ms" }}

@@ -36,7 +36,7 @@ export function SiteHeader({ products, categories }: SiteHeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-shimai-black/92 backdrop-blur-md pt-[env(safe-area-inset-top,0px)]">
+      <header className="sticky top-0 z-30 bg-shimai-black/92 backdrop-blur-md pt-[env(safe-area-inset-top,0px)]">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:h-[4.5rem] sm:px-6">
           <Link
             href="/"

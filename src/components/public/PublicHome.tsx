@@ -29,9 +29,8 @@ type PublicHomeProps = {
 };
 
 /**
- * Ritmo sakura (opción 4):
- * - branches = pausas grandes (cambio de “mundo”)
- * - petals   = pausas medias (seguir leyendo sin ahogo)
+ * Ritmo sakura — solo pausas en cambios de “mundo” (menú / historia),
+ * no entre bloques que ya viven en el mismo negro continuo.
  */
 export function PublicHome({
   categories,
@@ -46,7 +45,6 @@ export function PublicHome({
       <SiteHeader products={products} categories={categories} />
       <OrderingClosedBanner />
       <LandingHero />
-      <SakuraDivider motif="petals" size="medium" />
       <TrustStrip hoursDetail={orderingStatus.hoursDetail} />
       <PromoBanner promos={promos} />
       <SakuraDivider motif="branches" size="large" />
@@ -55,7 +53,6 @@ export function PublicHome({
       <OrderPath />
       <SakuraDivider motif="petals" size="medium" />
       <SistersStory story={sistersStory} />
-      <SakuraDivider motif="petals" size="medium" />
       <SiteFooter hoursDetail={orderingStatus.hoursDetail} />
       <CartToast />
       <WhatsAppFab phone={whatsappPhone} />

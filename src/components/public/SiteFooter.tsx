@@ -13,7 +13,7 @@ export function SiteFooter({
   const ops = shimaiBrand.operations;
 
   return (
-    <footer className="border-t border-white/[0.05] bg-shimai-black">
+    <footer className="bg-shimai-black">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
         <div className="flex flex-col items-center gap-6 text-center">
           <Link
@@ -43,7 +43,7 @@ export function SiteFooter({
           </p>
         </div>
 
-        <div className="mt-12 grid gap-8 border-t border-white/[0.06] pt-10 text-left sm:grid-cols-3">
+        <div className="mt-12 grid gap-8 pt-10 text-left sm:grid-cols-3">
           <div>
             <h2 className="font-serif text-lg text-shimai-ivory">Entrega</h2>
             <p className="mt-2 font-sans text-sm leading-relaxed text-shimai-ivory/50">
