@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { WhatsAppLink } from "@/components/public/WhatsAppLink";
+import { PushPermissionBanner } from "@/components/pwa/PushPermissionBanner";
 import { isWhatsAppConfigured } from "@/lib/contact/whatsapp";
 import {
   readCheckoutResult,
@@ -124,6 +125,12 @@ export function ConfirmationContent({ whatsappPhone }: ConfirmationContentProps)
 
         {orderId ? (
           <div className="mt-8 space-y-4 border-t border-white/[0.06] pt-6">
+            <PushPermissionBanner
+              audience="client"
+              orderId={orderId}
+              title="Avisos de tu pedido"
+              description="Activa notificaciones para saber cuando va en cocina, en camino o cuando el repartidor esté cerca — aunque cierres la app."
+            />
             <p className="font-sans text-xs tracking-wide text-shimai-ivory/45">
               ID del pedido{" "}
               <span className="text-shimai-gold">{orderId}</span>
