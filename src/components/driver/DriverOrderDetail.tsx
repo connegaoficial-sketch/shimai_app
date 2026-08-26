@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import {
   markDelivered,
@@ -10,8 +10,10 @@ import {
   startDelivery,
 } from "@/app/(driver)/driver/(panel)/actions";
 import { SlideToConfirm } from "@/components/driver/SlideToConfirm";
+import { Button } from "@/components/ui/button";
 import { PAYMENT_METHOD_LABELS } from "@/lib/admin/labels";
 import { formatMxn } from "@/lib/format";
+import { openGoogleMapsDirections } from "@/lib/maps/google-directions";
 import type { Order, OrderItem, PaymentMethod, PaymentStatus } from "@/types/database";
 
 const REQUEST_GPS_EVENT = "shimai:request-gps";
@@ -26,6 +28,12 @@ type DriverOrderDetailProps = {
   trackerUrl: string;
 };
 
+type GpsPulse = {
+  lat: number;
+  lng: number;
+  at: number;
+};
+
 export function DriverOrderDetail({
   order,
   items,
@@ -38,8 +46,18 @@ export function DriverOrderDetail({
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
     order.payment_status,
   );
+  const [gpsPulse, setGpsPulse] = useState<GpsPulse | null>(null);
+  const [openingRoute, setOpeningRoute] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   const gpsActive = status === "in_transit";
+  const destLat = order.delivery_lat;
+  const destLng = order.delivery_lng;
+  const hasDestination =
+    typeof destLat === "number" &&
+    typeof destLng === "number" &&
+    Number.isFinite(destLat) &&
+    Number.isFinite(destLng);
 
   const collectOnDelivery =
     order.payment_method === "cash" ||
@@ -55,6 +73,31 @@ export function DriverOrderDetail({
       ? String((order.delivery_address as { text: string }).text)
       : "Sin dirección";
 
+  useEffect(() => {
+    function onGpsFix(event: Event) {
+      const detail = (event as CustomEvent<GpsPulse & { orderId?: string }>)
+        .detail;
+      if (!detail || detail.orderId !== order.id) return;
+      setGpsPulse({
+        lat: detail.lat,
+        lng: detail.lng,
+        at: detail.at,
+      });
+    }
+    window.addEventListener("shimai:gps-fix", onGpsFix);
+    return () => window.removeEventListener("shimai:gps-fix", onGpsFix);
+  }, [order.id]);
+
+  useEffect(() => {
+    if (!gpsActive) return;
+    const t = window.setInterval(() => setNowTick(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [gpsActive]);
+
+  const gpsAgeSec = gpsPulse
+    ? Math.max(0, Math.round((nowTick - gpsPulse.at) / 1000))
+    : null;
+
   function run(action: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null);
     return new Promise<{ ok: boolean; error?: string }>((resolve) => {
@@ -68,6 +111,38 @@ export function DriverOrderDetail({
         resolve(result);
       });
     });
+  }
+
+  function openRoute() {
+    if (!hasDestination) {
+      setError("Este pedido no tiene coordenadas de entrega.");
+      return;
+    }
+
+    setOpeningRoute(true);
+    setError(null);
+
+    const openWith = (originLat?: number, originLng?: number) => {
+      openGoogleMapsDirections({
+        destinationLat: destLat!,
+        destinationLng: destLng!,
+        originLat,
+        originLng,
+      });
+      setOpeningRoute(false);
+    };
+
+    // Prefer live GPS for origin; if unavailable, Google Maps uses device location
+    if (!("geolocation" in navigator)) {
+      openWith(gpsPulse?.lat, gpsPulse?.lng);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => openWith(pos.coords.latitude, pos.coords.longitude),
+      () => openWith(gpsPulse?.lat, gpsPulse?.lng),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 15000 },
+    );
   }
 
   return (
@@ -126,6 +201,22 @@ export function DriverOrderDetail({
             Notas: {order.delivery_notes}
           </p>
         ) : null}
+
+        {hasDestination ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 w-full"
+            disabled={openingRoute}
+            onClick={openRoute}
+          >
+            {openingRoute ? "Abriendo ruta…" : "Abrir ruta en Google Maps"}
+          </Button>
+        ) : (
+          <p className="mt-3 font-sans text-xs text-shimai-ivory/45">
+            Sin pin de destino — no se puede abrir la ruta.
+          </p>
+        )}
       </section>
 
       <section className="rounded-md border border-white/[0.08] p-4">
@@ -150,10 +241,16 @@ export function DriverOrderDetail({
       </section>
 
       {gpsActive ? (
-        <p className="rounded-md border border-shimai-gold/30 bg-shimai-gold/10 px-3 py-3 font-sans text-sm text-shimai-gold">
-          En tránsito — el GPS del panel está compartiendo tu ubicación con el
-          cliente
-        </p>
+        <div className="rounded-md border border-shimai-gold/30 bg-shimai-gold/10 px-3 py-3">
+          <p className="font-sans text-sm text-shimai-gold">
+            GPS compartiendo ubicación con el cliente
+          </p>
+          <p className="mt-1 font-sans text-xs text-shimai-ivory/65">
+            {gpsPulse
+              ? `Último envío hace ${gpsAgeSec}s · ${gpsPulse.lat.toFixed(5)}, ${gpsPulse.lng.toFixed(5)}`
+              : "Esperando primer fix… Activa ubicación arriba si aún no lo pediste."}
+          </p>
+        </div>
       ) : null}
 
       <p className="break-all font-sans text-[11px] text-shimai-ivory/35">
@@ -176,7 +273,13 @@ export function DriverOrderDetail({
             onConfirm={async () => {
               window.dispatchEvent(new Event(REQUEST_GPS_EVENT));
               const result = await run(() => startDelivery(order.id));
-              if (result.ok) setStatus("in_transit");
+              if (result.ok) {
+                setStatus("in_transit");
+                // Open navigation right after starting delivery
+                if (hasDestination) {
+                  window.setTimeout(() => openRoute(), 400);
+                }
+              }
               if (!result.ok) throw new Error(result.error);
             }}
           />
@@ -201,8 +304,7 @@ export function DriverOrderDetail({
           />
         ) : null}
 
-        {status === "in_transit" &&
-        (!collectOnDelivery || isPaid) ? (
+        {status === "in_transit" && (!collectOnDelivery || isPaid) ? (
           <SlideToConfirm
             label="Desliza para confirmar entrega"
             completedLabel="Entrega completada"

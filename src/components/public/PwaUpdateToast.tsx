@@ -98,20 +98,16 @@ export function PwaUpdateToast() {
     <button
       type="button"
       onClick={() => askWaitingWorkerToActivate(waitingWorker)}
-      className="fixed z-[70] mx-auto max-w-sm animate-shimai-toast-in border border-shimai-gold/30 bg-shimai-black/95 px-4 py-3 text-left shadow-[0_16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md left-4 right-[5.5rem] sm:inset-x-auto sm:right-6 sm:top-24 sm:bottom-auto sm:w-[22rem]"
-      style={{
-        bottom:
-          "max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 5rem))",
-      }}
+      className="fixed bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-3 z-[70] w-64 max-w-[calc(100vw-1.5rem)] animate-shimai-toast-in border border-shimai-gold/30 bg-shimai-black/95 px-3 py-2.5 text-left shadow-[0_12px_32px_rgba(0,0,0,0.45)] backdrop-blur-md sm:bottom-5 sm:right-5"
     >
-      <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-shimai-gold/80">
+      <p className="font-sans text-[9px] uppercase tracking-[0.18em] text-shimai-gold/80">
         SHIMAI
       </p>
-      <p className="mt-1 font-serif text-xl text-shimai-ivory">
+      <p className="mt-0.5 font-serif text-[15px] leading-snug text-shimai-ivory">
         La app se actualizó
       </p>
-      <p className="mt-1 font-sans text-sm text-shimai-ivory/60">
-        Toca aquí para cargar la nueva versión.
+      <p className="mt-1 font-sans text-[11px] leading-snug text-shimai-ivory/60">
+        Toca para cargar la nueva versión
       </p>
     </button>
   );

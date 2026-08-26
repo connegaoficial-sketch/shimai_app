@@ -1,129 +1,166 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useEffect, useRef, useState } from "react";
 
 import {
-  isMapAlive,
-  safeFitBounds,
-  safeInvalidateSize,
-  safeSetMarkerLatLng,
-} from "@/lib/maps/leaflet-guards";
-import { addDeliveryTiles } from "@/lib/maps/tiles";
+  loadGoogleMaps,
+  SHIMAI_MAP_STYLES,
+} from "@/lib/maps/load-google-maps";
+
+type LatLng = { lat: number; lng: number };
 
 type TrackerMapProps = {
-  customer: { lat: number; lng: number } | null;
-  driver: { lat: number; lng: number } | null;
+  customer: LatLng | null;
+  driver: LatLng | null;
 };
 
 const FALLBACK_CENTER = { lat: 21.916146, lng: -99.9900263 };
 
-function goldIcon() {
-  return L.divIcon({
-    className: "",
-    html: `<div style="width:18px;height:18px;border-radius:9999px;background:#C9A45C;border:2px solid #1a1a1a;box-shadow:0 0 0 4px rgba(201,164,92,0.25)"></div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
-  });
-}
+const CUSTOMER_PIN = encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
+    <circle cx="9" cy="9" r="7" fill="#E8A5B5" stroke="#1a1a1a" stroke-width="2"/>
+  </svg>`,
+);
 
-function sakuraIcon() {
-  return L.divIcon({
-    className: "",
-    html: `<div style="width:12px;height:12px;border-radius:9999px;background:#E8A5B5;border:2px solid #1a1a1a;opacity:0.95"></div>`,
-    iconSize: [12, 12],
-    iconAnchor: [6, 6],
-  });
-}
+const DRIVER_PIN = encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+    <circle cx="11" cy="11" r="8" fill="#C9A45C" stroke="#1a1a1a" stroke-width="2"/>
+    <circle cx="11" cy="11" r="3" fill="#1a1a1a"/>
+  </svg>`,
+);
 
 export function TrackerMap({ customer, driver }: TrackerMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const driverMarkerRef = useRef<L.Marker | null>(null);
-  const customerMarkerRef = useRef<L.Marker | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const mapsApiRef = useRef<typeof google.maps | null>(null);
+  const driverMarkerRef = useRef<google.maps.Marker | null>(null);
+  const customerMarkerRef = useRef<google.maps.Marker | null>(null);
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    let cancelled = false;
 
-    const center = driver ?? customer ?? FALLBACK_CENTER;
-    const map = L.map(containerRef.current, {
-      zoomControl: false,
-      attributionControl: true,
-    }).setView([center.lat, center.lng], 15);
+    async function init() {
+      if (!containerRef.current) return;
+      try {
+        const maps = await loadGoogleMaps();
+        if (cancelled || !containerRef.current) return;
+        mapsApiRef.current = maps;
 
-    addDeliveryTiles(map);
+        const center = driver ?? customer ?? FALLBACK_CENTER;
+        const map = new maps.Map(containerRef.current, {
+          center,
+          zoom: 15,
+          disableDefaultUI: true,
+          zoomControl: true,
+          zoomControlOptions: {
+            position: maps.ControlPosition.RIGHT_BOTTOM,
+          },
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          clickableIcons: false,
+          gestureHandling: "greedy",
+          styles: SHIMAI_MAP_STYLES,
+        });
 
-    L.control.zoom({ position: "bottomright" }).addTo(map);
-    mapRef.current = map;
-    map.whenReady(() => safeInvalidateSize(map));
-    const timeout = window.setTimeout(() => safeInvalidateSize(map), 250);
+        mapRef.current = map;
+        setReady(true);
+        setLoadError(null);
+      } catch (error) {
+        if (cancelled) return;
+        console.error("[TrackerMap]", error);
+        setLoadError("No se pudo cargar el mapa.");
+      }
+    }
+
+    void init();
 
     return () => {
-      window.clearTimeout(timeout);
+      cancelled = true;
+      driverMarkerRef.current?.setMap(null);
+      customerMarkerRef.current?.setMap(null);
       driverMarkerRef.current = null;
       customerMarkerRef.current = null;
       mapRef.current = null;
-      map.remove();
     };
   }, []);
 
   useEffect(() => {
+    if (!ready) return;
     const map = mapRef.current;
-    if (!isMapAlive(map)) return;
+    const maps = mapsApiRef.current;
+    if (!map || !maps) return;
 
-    const sync = () => {
-      if (!isMapAlive(mapRef.current)) return;
-      const liveMap = mapRef.current!;
-
-      if (customer) {
-        if (!customerMarkerRef.current) {
-          customerMarkerRef.current = L.marker([customer.lat, customer.lng], {
-            icon: sakuraIcon(),
-            interactive: false,
-          }).addTo(liveMap);
-        } else {
-          safeSetMarkerLatLng(
-            customerMarkerRef.current,
-            customer.lat,
-            customer.lng,
-          );
-        }
+    if (customer) {
+      if (!customerMarkerRef.current) {
+        customerMarkerRef.current = new maps.Marker({
+          map,
+          position: customer,
+          title: "Tu ubicación",
+          icon: {
+            url: `data:image/svg+xml;charset=UTF-8,${CUSTOMER_PIN}`,
+            scaledSize: new maps.Size(18, 18),
+            anchor: new maps.Point(9, 9),
+          },
+          zIndex: 1,
+        });
+      } else {
+        customerMarkerRef.current.setPosition(customer);
       }
-
-      if (driver) {
-        if (!driverMarkerRef.current) {
-          driverMarkerRef.current = L.marker([driver.lat, driver.lng], {
-            icon: goldIcon(),
-          }).addTo(liveMap);
-        } else {
-          safeSetMarkerLatLng(driverMarkerRef.current, driver.lat, driver.lng);
-        }
-      }
-
-      const points: [number, number][] = [];
-      if (customer) points.push([customer.lat, customer.lng]);
-      if (driver) points.push([driver.lat, driver.lng]);
-
-      if (points.length >= 2) {
-        safeFitBounds(liveMap, points);
-      } else if (points.length === 1) {
-        liveMap.setView(points[0], Math.max(liveMap.getZoom(), 15));
-      }
-    };
-
-    if (map.whenReady) {
-      map.whenReady(sync);
-    } else {
-      sync();
     }
-  }, [customer, driver]);
+
+    if (driver) {
+      if (!driverMarkerRef.current) {
+        driverMarkerRef.current = new maps.Marker({
+          map,
+          position: driver,
+          title: "Repartidor",
+          icon: {
+            url: `data:image/svg+xml;charset=UTF-8,${DRIVER_PIN}`,
+            scaledSize: new maps.Size(22, 22),
+            anchor: new maps.Point(11, 11),
+          },
+          zIndex: 2,
+        });
+      } else {
+        driverMarkerRef.current.setPosition(driver);
+      }
+    }
+
+    const points: LatLng[] = [];
+    if (customer) points.push(customer);
+    if (driver) points.push(driver);
+
+    if (points.length >= 2) {
+      const bounds = new maps.LatLngBounds();
+      for (const p of points) bounds.extend(p);
+      map.fitBounds(bounds, 64);
+    } else if (points.length === 1) {
+      map.panTo(points[0]);
+      const zoom = map.getZoom() ?? 15;
+      if (zoom < 15) map.setZoom(15);
+    }
+  }, [customer, driver, ready]);
 
   return (
-    <div
-      ref={containerRef}
-      className="h-full w-full bg-white"
-      aria-label="Mapa de seguimiento"
-    />
+    <div className="relative h-full w-full bg-[#1c1c1c]">
+      {loadError ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center px-4 text-center font-sans text-sm text-shimai-ivory/60">
+          {loadError}
+        </div>
+      ) : null}
+      {!ready && !loadError ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center font-sans text-sm text-shimai-ivory/40">
+          Cargando mapa…
+        </div>
+      ) : null}
+      <div
+        ref={containerRef}
+        className="absolute inset-0 h-full w-full"
+        aria-label="Mapa de seguimiento"
+      />
+    </div>
   );
 }

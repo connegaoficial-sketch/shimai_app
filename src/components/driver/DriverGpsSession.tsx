@@ -139,7 +139,19 @@ export function DriverGpsSession({ driverId }: { driverId: string }) {
         setLastFixAt(new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
 
         for (const orderId of orderIdsRef.current) {
-          void upsertDriverLocation({ orderId, lat, lng });
+          void upsertDriverLocation({ orderId, lat, lng }).then((result) => {
+            if (!result.ok) return;
+            window.dispatchEvent(
+              new CustomEvent("shimai:gps-fix", {
+                detail: {
+                  orderId,
+                  lat,
+                  lng,
+                  at: Date.now(),
+                },
+              }),
+            );
+          });
         }
       },
       (error) => {
