@@ -1,9 +1,13 @@
 "use client";
 
 import { ShimaiHeroLogo } from "@/components/public/ShimaiHeroLogo";
+import { useOrderingGate } from "@/components/public/OrderingGate";
+import { Button } from "@/components/ui/button";
 import { shimaiBrand } from "@/lib/brand/shimai";
 
 export function LandingHero() {
+  const { acceptingOrders, headline, hoursDetail } = useOrderingGate();
+
   const scrollToMenu = () => {
     document.getElementById("menu")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -32,10 +36,12 @@ export function LandingHero() {
             id="hero-heading"
             className="font-serif text-3xl leading-tight tracking-tight text-balance text-shimai-ivory sm:text-4xl md:text-[2.75rem]"
           >
-            {shimaiBrand.heroHeadline}
+            {acceptingOrders ? shimaiBrand.heroHeadline : headline}
           </h1>
           <p className="font-sans text-sm leading-relaxed text-shimai-ivory/60 sm:text-[15px]">
-            {shimaiBrand.heroSupport}
+            {acceptingOrders
+              ? shimaiBrand.heroSupport
+              : "Puedes mirar la carta con calma. Los pedidos vuelven con el siguiente día de cocina."}
           </p>
         </div>
 
@@ -43,18 +49,18 @@ export function LandingHero() {
           className="animate-shimai-fade-up mt-9 flex flex-col items-center gap-3"
           style={{ animationDelay: "200ms" }}
         >
-          <span className="shimai-glow-border shimai-glow-border--square">
-            <button
-              type="button"
-              onClick={scrollToMenu}
-              className="h-11 px-8 font-sans text-sm font-medium tracking-wide border border-shimai-gold bg-shimai-gold text-shimai-black transition-[transform,background-color] duration-150 ease-out hover:bg-shimai-gold/90 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shimai-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-shimai-black sm:h-12 sm:px-10"
-            >
-              {shimaiBrand.primaryCta}
-            </button>
-          </span>
+          <Button
+            type="button"
+            size="lg"
+            className="h-11 rounded-full px-8 sm:h-12 sm:px-10"
+            onClick={scrollToMenu}
+            glow={acceptingOrders}
+            variant={acceptingOrders ? "primary" : "outline"}
+          >
+            {acceptingOrders ? shimaiBrand.primaryCta : "Ver la carta"}
+          </Button>
           <p className="max-w-xs font-sans text-xs leading-relaxed text-shimai-ivory/40">
-            {shimaiBrand.operations.zonesDetail} ·{" "}
-            {shimaiBrand.operations.hoursDetail}
+            {shimaiBrand.operations.zonesDetail} · {hoursDetail}
           </p>
         </div>
       </div>

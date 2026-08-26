@@ -99,7 +99,12 @@ type WhatsAppContact = {
   phone: string;
 };
 
-type PromoType = "first_order" | "coupon" | "free_delivery";
+type PromoType =
+  | "first_order"
+  | "coupon"
+  | "free_delivery"
+  | "bogo_free"
+  | "bogo_half";
 type PromoValueType = "percent" | "fixed";
 
 type Promo = {
@@ -112,8 +117,16 @@ type Promo = {
   value_type: PromoValueType;
   value: number;
   min_subtotal: number;
+  product_ids: string[];
   starts_at: string | null;
   ends_at: string | null;
+};
+
+type PromoLine = {
+  kind: "money" | "delivery";
+  type: PromoType;
+  label: string;
+  amount: number | null;
 };
 
 type AppliedPromo = {
@@ -122,6 +135,7 @@ type AppliedPromo = {
   promo_code: string | null;
   promo_label: string | null;
   promo_type: string | null;
+  promo_lines: PromoLine[];
 };
 
 type ProductRow = {
@@ -356,7 +370,13 @@ function parsePromos(raw: unknown): Promo[] {
   if (!raw || typeof raw !== "object") return [];
   const items = (raw as { items?: unknown }).items;
   if (!Array.isArray(items)) return [];
-  const types: PromoType[] = ["first_order", "coupon", "free_delivery"];
+  const types: PromoType[] = [
+    "first_order",
+    "coupon",
+    "free_delivery",
+    "bogo_free",
+    "bogo_half",
+  ];
   const valueTypes: PromoValueType[] = ["percent", "fixed"];
   return items.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
@@ -364,6 +384,15 @@ function parsePromos(raw: unknown): Promo[] {
     const type = String(row.type ?? "") as PromoType;
     if (!types.includes(type)) return [];
     const valueTypeRaw = String(row.value_type ?? "") as PromoValueType;
+    const productIds = Array.isArray(row.product_ids)
+      ? [
+        ...new Set(
+          row.product_ids
+            .map((id) => (typeof id === "string" ? id.trim() : ""))
+            .filter(Boolean),
+        ),
+      ]
+      : [];
     return [{
       id: String(row.id ?? ""),
       active: row.active === true,
@@ -372,8 +401,9 @@ function parsePromos(raw: unknown): Promo[] {
       subtitle: String(row.subtitle ?? "").trim(),
       code: normalizePromoCode(String(row.code ?? "")),
       value_type: valueTypes.includes(valueTypeRaw) ? valueTypeRaw : "percent",
-      value: Math.max(0, Number(row.value) || 0),
+      value: Math.max(0, Number(row.value) || (type === "bogo_half" ? 50 : 0)),
       min_subtotal: Math.max(0, Number(row.min_subtotal) || 0),
+      product_ids: productIds,
       starts_at: String(row.starts_at ?? "").trim() || null,
       ends_at: String(row.ends_at ?? "").trim() || null,
     }];
@@ -381,7 +411,13 @@ function parsePromos(raw: unknown): Promo[] {
 }
 
 function moneyOff(promo: Promo, subtotal: number): number {
-  if (promo.type === "free_delivery") return 0;
+  if (
+    promo.type === "free_delivery" ||
+    promo.type === "bogo_free" ||
+    promo.type === "bogo_half"
+  ) {
+    return 0;
+  }
   if (promo.min_subtotal > 0 && subtotal < promo.min_subtotal) return 0;
   if (promo.value_type === "percent") {
     const pct = Math.min(promo.value, 100);
@@ -390,11 +426,55 @@ function moneyOff(promo: Promo, subtotal: number): number {
   return roundMoney(Math.min(promo.value, subtotal));
 }
 
+function expandEligibleUnitPrices(
+  lines: PricedLine[],
+  productIds: string[],
+): number[] {
+  if (productIds.length === 0) return [];
+  const allowed = new Set(productIds);
+  const units: number[] = [];
+  for (const line of lines) {
+    if (!allowed.has(line.product_id)) continue;
+    for (let i = 0; i < line.quantity; i++) {
+      units.push(line.unit_price);
+    }
+  }
+  return units;
+}
+
+/** 2×1 / 2nd half — charge higher of each pair; discount from lower. */
+function computeBogoDiscount(
+  unitPrices: number[],
+  mode: "bogo_free" | "bogo_half",
+  halfPercent = 50,
+): number {
+  if (unitPrices.length < 2) return 0;
+  const sorted = [...unitPrices].sort((a, b) => b - a);
+  const pct = Math.min(100, Math.max(0, halfPercent));
+  let discount = 0;
+  for (let i = 0; i + 1 < sorted.length; i += 2) {
+    const lower = sorted[i + 1]!;
+    discount += mode === "bogo_free" ? lower : lower * (pct / 100);
+  }
+  return roundMoney(discount);
+}
+
 function promoLabel(promo: Promo): string {
-  if (promo.title) return promo.title;
-  if (promo.type === "free_delivery") return "Envío gratis";
-  if (promo.type === "first_order") return "Primera compra";
-  return promo.code ? `Cupón ${promo.code}` : "Descuento";
+  const kind =
+    promo.type === "free_delivery"
+      ? "Envío gratis"
+      : promo.type === "first_order"
+        ? "Primera compra"
+        : promo.type === "bogo_free"
+          ? "2×1"
+          : promo.type === "bogo_half"
+            ? `1 y el siguiente al ${promo.value || 50}%`
+            : promo.code
+              ? `Cupón ${promo.code}`
+              : "Cupón";
+  const title = promo.title.trim();
+  if (title && title !== kind) return `${kind} · ${title}`;
+  return kind;
 }
 
 async function hasPriorOrder(
@@ -430,6 +510,7 @@ async function resolvePromos(input: {
   promoCode: string | null;
   userId: string | null;
   phone: string | null;
+  lines: PricedLine[];
 }): Promise<{ ok: true; applied: AppliedPromo } | { ok: false; error: string }> {
   const { data: promoRow, error: promoError } = await input.service
     .from("settings")
@@ -450,7 +531,7 @@ async function resolvePromos(input: {
   let discount = 0;
   let deliveryFee = input.deliveryFee;
   let promo_code: string | null = null;
-  const labels: string[] = [];
+  const lines: PromoLine[] = [];
   let promo_type: string | null = null;
 
   if (enteredCode) {
@@ -469,7 +550,14 @@ async function resolvePromos(input: {
     discount = moneyOff(coupon, input.subtotal);
     promo_code = coupon.code;
     promo_type = "coupon";
-    labels.push(promoLabel(coupon));
+    if (discount > 0) {
+      lines.push({
+        kind: "money",
+        type: "coupon",
+        label: promoLabel(coupon),
+        amount: discount,
+      });
+    }
   } else {
     const firstOrder = live.find((promo) => promo.type === "first_order");
     if (firstOrder) {
@@ -484,9 +572,40 @@ async function resolvePromos(input: {
         if (!prior) {
           discount = moneyOff(firstOrder, input.subtotal);
           promo_type = "first_order";
-          labels.push(promoLabel(firstOrder));
+          if (discount > 0) {
+            lines.push({
+              kind: "money",
+              type: "first_order",
+              label: promoLabel(firstOrder),
+              amount: discount,
+            });
+          }
         }
       }
+    }
+  }
+
+  for (const promo of live) {
+    if (promo.type !== "bogo_free" && promo.type !== "bogo_half") continue;
+    if (promo.min_subtotal > 0 && input.subtotal < promo.min_subtotal) continue;
+    if (promo.product_ids.length === 0) continue;
+    const units = expandEligibleUnitPrices(input.lines, promo.product_ids);
+    const bogoOff = computeBogoDiscount(
+      units,
+      promo.type,
+      promo.type === "bogo_half" ? promo.value || 50 : 50,
+    );
+    if (bogoOff > 0) {
+      discount = roundMoney(discount + bogoOff);
+      if (!promo_type || promo_type === "free_delivery") {
+        promo_type = promo.type;
+      }
+      lines.push({
+        kind: "money",
+        type: promo.type,
+        label: promoLabel(promo),
+        amount: bogoOff,
+      });
     }
   }
 
@@ -497,8 +616,15 @@ async function resolvePromos(input: {
   ) {
     deliveryFee = 0;
     if (!promo_type) promo_type = "free_delivery";
-    labels.push(promoLabel(freeDelivery));
+    lines.push({
+      kind: "delivery",
+      type: "free_delivery",
+      label: promoLabel(freeDelivery),
+      amount: null,
+    });
   }
+
+  discount = roundMoney(Math.min(discount, input.subtotal));
 
   return {
     ok: true,
@@ -506,8 +632,9 @@ async function resolvePromos(input: {
       discount,
       deliveryFee,
       promo_code,
-      promo_label: labels.length > 0 ? labels.join(" · ") : null,
+      promo_label: lines.length > 0 ? lines.map((l) => l.label).join(" · ") : null,
       promo_type,
+      promo_lines: lines,
     },
   };
 }
@@ -722,6 +849,64 @@ Deno.serve(async (req: Request) => {
     const user = await resolveUser(req);
     const service = createServiceClient();
 
+    const { data: scheduleRow, error: scheduleError } = await service
+      .from("settings")
+      .select("value")
+      .eq("key", "ordering_schedule")
+      .maybeSingle();
+
+    if (scheduleError) {
+      console.error("ordering_schedule settings error", scheduleError);
+      return jsonResponse(req, 500, {
+        error: "Unable to load ordering schedule",
+      });
+    }
+
+    const scheduleValue = (scheduleRow?.value ?? {
+      timezone: "America/Mexico_City",
+      closed_weekdays: [1],
+      force_closed: false,
+    }) as {
+      timezone?: string;
+      closed_weekdays?: number[];
+      force_closed?: boolean;
+    };
+    const timezone =
+      typeof scheduleValue.timezone === "string" && scheduleValue.timezone
+        ? scheduleValue.timezone
+        : "America/Mexico_City";
+    const closedWeekdays = Array.isArray(scheduleValue.closed_weekdays)
+      ? scheduleValue.closed_weekdays
+          .map((n) => Number(n))
+          .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)
+      : [2];
+    const forceClosed = Boolean(scheduleValue.force_closed);
+    const weekdayShort = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+    })
+      .format(new Date())
+      .slice(0, 3);
+    const weekdayMap: Record<string, number> = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
+    };
+    const weekday = weekdayMap[weekdayShort] ?? new Date().getUTCDay();
+    const isRestDay = closedWeekdays.includes(weekday);
+    if (forceClosed || isRestDay) {
+      return jsonResponse(req, 403, {
+        error: "ordering_closed",
+        message: forceClosed
+          ? "Hoy no recibimos pedidos. La cocina está en pausa por ahora."
+          : "Hoy descansamos. Los pedidos vuelven el siguiente día de cocina.",
+      });
+    }
+
     const { data: paymentMethodsRow, error: paymentMethodsError } =
       await service
         .from("settings")
@@ -846,6 +1031,7 @@ Deno.serve(async (req: Request) => {
       promoCode,
       userId: user?.id ?? null,
       phone: clientPhone,
+      lines: pricedLines,
     });
     if (!promoResult.ok) {
       return jsonResponse(req, 400, { error: promoResult.error });
@@ -923,6 +1109,7 @@ Deno.serve(async (req: Request) => {
       promo_code: promoResult.applied.promo_code,
       promo_label: promoResult.applied.promo_label,
       promo_type: promoResult.applied.promo_type,
+      promo_lines: promoResult.applied.promo_lines,
       delivery_distance_km: quote.distanceKm,
       total: totalFinal,
       items: pricedLines,

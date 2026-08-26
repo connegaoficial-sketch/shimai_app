@@ -13,6 +13,9 @@ const withPWA = withPWAInit({
   fallbacks: {
     document: "/offline",
   },
+  workboxOptions: {
+    importScripts: ["/push-handler.js"],
+  },
 });
 
 const nextConfig: NextConfig = {

@@ -17,6 +17,8 @@ export async function updateSetting(
     "delivery_config",
     "whatsapp_contact",
     "promos",
+    "ordering_schedule",
+    "sisters_story",
   ]);
   if (!allowed.has(key)) {
     return { ok: false, error: "Setting no permitido." };
@@ -37,6 +39,9 @@ export async function updateSetting(
   }
 
   revalidatePath("/admin/settings");
+  if (key === "promos") {
+    revalidatePath("/admin/promos");
+  }
   revalidatePath("/");
   revalidatePath("/checkout");
   revalidatePath("/confirmation");

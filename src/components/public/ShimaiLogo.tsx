@@ -13,12 +13,12 @@ const SIZES = {
   full: {
     width: 1248,
     height: 832,
-    alt: "SHIMAI Sushi House — Por hermanas, una historia, un sabor",
+    alt: "SHIMAI Sushi House — Dos hermanas, una historia, un sabor",
   },
   heroFull: {
     width: 3744,
     height: 2496,
-    alt: "SHIMAI Sushi House — Por hermanas, una historia, un sabor",
+    alt: "SHIMAI Sushi House — Dos hermanas, una historia, un sabor",
   },
   emblem: { width: 56, height: 56, alt: "SHIMAI" },
 } as const;

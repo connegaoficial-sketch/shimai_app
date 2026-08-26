@@ -1,27 +1,31 @@
 "use client";
 
+import { useOrderingGate } from "@/components/public/OrderingGate";
+import { Button } from "@/components/ui/button";
 import { shimaiBrand } from "@/lib/brand/shimai";
 
 const steps = [
   {
     title: "Empieza por lo que más piden",
-    body: "No hace falta recorrer todo. En cada grupo te marcamos lo que más piden, por si no sabes qué ordenar.",
+    body: "Si no sabes qué ordenar, no hay drama: en cada grupo te marcamos lo que más piden. Ahí está el atajo.",
   },
   {
-    title: "Arma tu mesa",
+    title: "Arma tu pedido a tu ritmo",
     body: "Suma lo que se te antoje. Si te falta bebida o postre, el carrito te sugiere el siguiente paso.",
   },
   {
-    title: "Paga a tu modo",
+    title: "Paga como te acomode",
     body: `${shimaiBrand.operations.paymentsShort}. Confirmas y las hermanas preparan tu pedido.`,
   },
   {
-    title: "Sigue tu pedido",
-    body: "Lo ves en tiempo real: cómo va en cocina y, cuando el repartidor va a tu casa, lo sigues en el mapa desde el tracker.",
+    title: "Síguelo hasta tu casa",
+    body: "Lo ves en tiempo real: cómo va en cocina y, cuando el repartidor sale, lo acompañas en el mapa.",
   },
 ] as const;
 
 export function OrderPath() {
+  const { acceptingOrders } = useOrderingGate();
+
   const scrollToMenu = () => {
     document.getElementById("menu")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -37,11 +41,11 @@ export function OrderPath() {
             id="order-path-heading"
             className="font-serif text-3xl leading-tight text-shimai-ivory sm:text-4xl"
           >
-            Pedir sin dar vueltas
+            Del antojo a tu puerta
           </h2>
           <p className="mt-3 font-sans text-sm leading-relaxed text-shimai-ivory/50">
-            Del antojo al tracker. Entrega en{" "}
-            {shimaiBrand.operations.zonesShort.toLowerCase()}.
+            Sin vueltas: eliges, pagas a tu modo y lo sigues hasta casa. Entrega
+            en {shimaiBrand.operations.zonesShort.toLowerCase()}.
           </p>
         </header>
 
@@ -65,15 +69,16 @@ export function OrderPath() {
         </ol>
 
         <div className="mt-10 flex justify-center">
-          <span className="shimai-glow-border shimai-glow-border--square">
-            <button
-              type="button"
-              onClick={scrollToMenu}
-              className="h-11 px-8 font-sans text-sm font-medium tracking-wide border border-shimai-gold bg-shimai-gold text-shimai-black transition-[transform,background-color] duration-150 ease-out hover:bg-shimai-gold/90 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shimai-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-shimai-black sm:h-12 sm:px-10"
-            >
-              {shimaiBrand.primaryCta}
-            </button>
-          </span>
+          <Button
+            type="button"
+            size="lg"
+            className="h-11 rounded-full px-8 sm:h-12 sm:px-10"
+            onClick={scrollToMenu}
+            glow={acceptingOrders}
+            variant={acceptingOrders ? "primary" : "outline"}
+          >
+            {acceptingOrders ? shimaiBrand.primaryCta : "Ver la carta"}
+          </Button>
         </div>
       </div>
     </section>

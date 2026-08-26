@@ -33,6 +33,9 @@ type FormState = {
   category_id: string;
   is_available: boolean;
   is_signature: boolean;
+  is_sushi: boolean;
+  filling: string;
+  topping: string;
   image_url: string | null;
 };
 
@@ -43,6 +46,9 @@ const EMPTY_FORM: FormState = {
   category_id: "",
   is_available: true,
   is_signature: false,
+  is_sushi: false,
+  filling: "",
+  topping: "",
   image_url: null,
 };
 
@@ -89,6 +95,9 @@ export function MenuAdmin({ products, categories }: MenuAdminProps) {
       category_id: product.category_id,
       is_available: product.is_available,
       is_signature: product.is_signature,
+      is_sushi: product.is_sushi ?? false,
+      filling: product.filling ?? "",
+      topping: product.topping ?? "",
       image_url: product.image_url,
     });
     setError(null);
@@ -132,6 +141,9 @@ export function MenuAdmin({ products, categories }: MenuAdminProps) {
       category_id: form.category_id,
       is_available: form.is_available,
       is_signature: form.is_signature,
+      is_sushi: form.is_sushi,
+      filling: form.filling,
+      topping: form.topping,
       image_url: form.image_url,
     };
 
@@ -319,16 +331,64 @@ export function MenuAdmin({ products, categories }: MenuAdminProps) {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, description: e.target.value }))
+              <div className="flex items-start justify-between gap-4 rounded-md border border-white/[0.08] px-3 py-3">
+                <div className="min-w-0">
+                  <Label htmlFor="is_sushi">Es sushi / rollo</Label>
+                  <p className="mt-1 font-sans text-xs leading-relaxed text-shimai-ivory/45">
+                    Actívalo para capturar por dentro (relleno) y por fuera
+                    (topping). Bebidas y otros productos dejan la descripción
+                    libre.
+                  </p>
+                </div>
+                <Switch
+                  id="is_sushi"
+                  checked={form.is_sushi}
+                  onCheckedChange={(checked) =>
+                    setForm((p) => ({ ...p, is_sushi: checked }))
                   }
+                  label="Es sushi / rollo"
                 />
               </div>
+
+              {form.is_sushi ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="filling">Por dentro (relleno)</Label>
+                    <Input
+                      id="filling"
+                      value={form.filling}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, filling: e.target.value }))
+                      }
+                      placeholder="Ej. camarón, queso, aguacate"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="topping">Por fuera (topping)</Label>
+                    <Input
+                      id="topping"
+                      value={form.topping}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, topping: e.target.value }))
+                      }
+                      placeholder="Ej. ajonjolí, salsa especial"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descripción</Label>
+                  <Textarea
+                    id="description"
+                    value={form.description}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, description: e.target.value }))
+                    }
+                    placeholder="Opcional. En la carta se corta a 2 líneas."
+                  />
+                </div>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="price">Precio (MXN)</Label>

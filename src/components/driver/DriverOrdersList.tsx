@@ -47,16 +47,21 @@ export function DriverOrdersList({
 
       <section className="space-y-3">
         <h2 className="font-sans text-xs uppercase tracking-[0.16em] text-shimai-gold">
-          Listos sin asignar
+          Sin repartidor asignado
         </h2>
         {available.length === 0 ? (
           <p className="font-sans text-sm text-shimai-ivory/45">
             Nada disponible por ahora.
           </p>
         ) : (
-          available.map((order) => (
-            <AvailableRow key={order.id} order={order} />
-          ))
+          <>
+            <p className="font-sans text-xs text-shimai-ivory/40">
+              Reserva manual si nadie recibió la asignación automática.
+            </p>
+            {available.map((order) => (
+              <AvailableRow key={order.id} order={order} />
+            ))}
+          </>
         )}
       </section>
     </div>
@@ -85,6 +90,12 @@ function OrderRow({ order }: { order: DriverOrderCard }) {
       </div>
       <p className="mt-3 font-sans text-xs text-shimai-ivory/45">
         {PAYMENT_METHOD_LABELS[order.payment_method as PaymentMethod]}
+        {collectOnDelivery(order) ? (
+          <span className="text-shimai-gold">
+            {" "}
+            · {paymentHint(order)}
+          </span>
+        ) : null}
       </p>
     </Link>
   );
@@ -103,6 +114,12 @@ function AvailableRow({ order }: { order: DriverOrderCard }) {
           <p className="mt-1 font-sans text-xs text-shimai-ivory/45">
             {formatMxn(Number(order.total))} ·{" "}
             {PAYMENT_METHOD_LABELS[order.payment_method as PaymentMethod]}
+            {collectOnDelivery(order) ? (
+              <span className="text-shimai-gold">
+                {" "}
+                · {paymentHint(order)}
+              </span>
+            ) : null}
           </p>
         </div>
       </div>
@@ -141,4 +158,17 @@ function statusLabel(status: Order["status"]): string {
     default:
       return status;
   }
+}
+
+function collectOnDelivery(order: DriverOrderCard): boolean {
+  return (
+    order.payment_method === "cash" || order.payment_method === "card_terminal"
+  );
+}
+
+function paymentHint(order: DriverOrderCard): string {
+  if (!collectOnDelivery(order)) return "";
+  if (order.payment_status === "paid") return "Pagado";
+  if (order.status === "in_transit") return "Cobrar al entregar";
+  return "Cobro en entrega";
 }

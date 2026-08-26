@@ -4,11 +4,15 @@ import Image from "next/image";
 import { useEffect, useMemo } from "react";
 
 import { CrossSellRail } from "@/components/public/CrossSellRail";
+import { useOrderingGate } from "@/components/public/OrderingGate";
+import { ProductCardMeta } from "@/components/public/ProductCardMeta";
+import { ProductPromoBadges } from "@/components/public/ProductPromoBadges";
 import { Button } from "@/components/ui/button";
 import { formatMxn } from "@/lib/format";
 import { shimaiBrand } from "@/lib/brand/shimai";
 import { getCrossSellProducts } from "@/lib/menu/cross-sell";
 import type { MenuCategory, MenuProduct } from "@/lib/menu/get-menu-data";
+import type { ProductPromoBadge } from "@/lib/promos/promos";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { useCartUiStore } from "@/stores/cartUiStore";
@@ -22,6 +26,7 @@ type ProductDetailModalProps = {
   catalog?: MenuProduct[];
   categories?: MenuCategory[];
   accent?: "gold" | "sakura";
+  promoBadges?: ProductPromoBadge[];
   onClose: () => void;
   onNavigate: (productId: string) => void;
 };
@@ -33,6 +38,7 @@ export function ProductDetailModal({
   catalog,
   categories = [],
   accent = "gold",
+  promoBadges = [],
   onClose,
   onNavigate,
 }: ProductDetailModalProps) {
@@ -45,6 +51,7 @@ export function ProductDetailModal({
   const addItem = useCartStore((s) => s.addItem);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const notifyAdded = useCartUiStore((s) => s.notifyAdded);
+  const { acceptingOrders } = useOrderingGate();
 
   const currentIndex = useMemo(
     () => (product ? products.findIndex((p) => p.id === product.id) : -1),
@@ -216,6 +223,7 @@ export function ProductDetailModal({
                 {shimaiBrand.popularLabel}
               </span>
             ) : null}
+            <ProductPromoBadges badges={promoBadges} placement="inline" />
             <h2
               id="product-detail-title"
               className="font-serif text-3xl leading-tight text-shimai-ivory"
@@ -227,31 +235,32 @@ export function ProductDetailModal({
             </p>
           </div>
 
-          {product.description ? (
-            <p className="font-sans text-sm leading-relaxed text-shimai-ivory/65">
-              {product.description}
-            </p>
+          {product.is_sushi || product.description ? (
+            <ProductCardMeta product={product} compact={false} />
           ) : null}
 
-          <div className="flex items-center justify-between gap-4 border-t border-white/[0.06] pt-4">
+          <div className="flex items-center justify-between gap-4 overflow-visible border-t border-white/[0.06] py-1 pt-4">
             {quantity === 0 ? (
               <Button
                 className={cn(
-                  "h-11 flex-1 border text-shimai-black",
+                  "h-11 flex-1 rounded-full border text-shimai-black",
                   accentBg,
                   accentHover,
                   accent === "sakura"
                     ? "border-shimai-sakura"
                     : "border-shimai-gold",
                 )}
+                disabled={!acceptingOrders}
+                glow={acceptingOrders}
                 onClick={() => {
+                  if (!acceptingOrders) return;
                   addItem(product.id, 1);
                   notifyAdded(product.name);
                 }}
               >
-                Agregar al pedido
+                {acceptingOrders ? shimaiBrand.featuredCta : "Hoy descansamos"}
               </Button>
-            ) : (
+            ) : acceptingOrders ? (
               <div className="flex w-full items-center justify-between gap-4">
                 <div className="flex h-11 items-center gap-3 border border-shimai-gold/30 px-2">
                   <button
@@ -278,6 +287,10 @@ export function ProductDetailModal({
                   En tu pedido
                 </p>
               </div>
+            ) : (
+              <p className="w-full text-center font-sans text-sm text-shimai-ivory/50">
+                Hoy descansamos — mañana puedes pedir
+              </p>
             )}
           </div>
 

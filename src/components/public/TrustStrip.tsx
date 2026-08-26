@@ -75,12 +75,12 @@ function IconWallet({ className }: { className?: string }) {
   );
 }
 
-const items = [
+const baseItems = [
   {
     Icon: IconClock,
     label: "Horario",
     value: shimaiBrand.operations.hoursLabel,
-    detail: shimaiBrand.operations.hoursDetail,
+    detailKey: "hours" as const,
   },
   {
     Icon: IconTruck,
@@ -102,7 +102,25 @@ const items = [
   },
 ] as const;
 
-export function TrustStrip() {
+type TrustStripProps = {
+  /** From admin ordering_schedule — not hardcoded weekdays */
+  hoursDetail?: string;
+};
+
+export function TrustStrip({
+  hoursDetail = shimaiBrand.operations.hoursDetail,
+}: TrustStripProps) {
+  const items = baseItems.map((item) =>
+    "detailKey" in item && item.detailKey === "hours"
+      ? { Icon: item.Icon, label: item.label, value: item.value, detail: hoursDetail }
+      : {
+          Icon: item.Icon,
+          label: item.label,
+          value: item.value,
+          detail: "detail" in item ? item.detail : hoursDetail,
+        },
+  );
+
   return (
     <section
       aria-label="Cómo pedimos y entregamos"

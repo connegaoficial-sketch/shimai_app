@@ -14,5 +14,5 @@ export default async function DriverPanelLayout({
 
   const driverName = profile.full_name?.trim() || "Repartidor";
 
-  return <DriverShell driverName={driverName}>{children}</DriverShell>;
+  return <DriverShell driverId={profile.id} driverName={driverName}>{children}</DriverShell>;
 }

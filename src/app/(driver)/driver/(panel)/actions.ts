@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache";
 import { requireDriverClient } from "@/lib/driver/require-driver";
 import { notifyOrderInTransit } from "@/lib/driver/notify-in-transit";
 import { isInMexicoBounds } from "@/lib/delivery/mexico-bounds";
+import { copyForOrderStatus } from "@/lib/notifications/events";
+import { notifyClient } from "@/lib/notifications/dispatch";
+import { maybeNotifyDriverNearby } from "@/lib/notifications/nearby";
 import type { OrderStatus } from "@/types/database";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -69,6 +72,11 @@ export async function startDelivery(orderId: string): Promise<ActionResult> {
 
   if (error) return { ok: false, error: error.message };
 
+  const inTransitCopy = copyForOrderStatus("in_transit", orderId);
+  if (inTransitCopy) {
+    await notifyClient({ supabase: gate.supabase, payload: inTransitCopy });
+  }
+
   // Fire-and-forget WhatsApp (Twilio); never block delivery flow
   void notifyOrderInTransit({
     orderId,
@@ -81,13 +89,59 @@ export async function startDelivery(orderId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+export async function markOrderPaid(orderId: string): Promise<ActionResult> {
+  const gate = await requireDriverClient();
+  if (!gate.ok) return { ok: false, error: gate.error };
+
+  const { data: order, error: fetchError } = await gate.supabase
+    .from("orders")
+    .select("id, status, driver_id, payment_method, payment_status")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (fetchError) return { ok: false, error: fetchError.message };
+  if (!order) return { ok: false, error: "Pedido no encontrado." };
+  if (order.driver_id !== gate.driverId) {
+    return { ok: false, error: "Pedido no asignado a ti." };
+  }
+  if (order.status !== "in_transit") {
+    return { ok: false, error: "Solo puedes cobrar en entrega activa." };
+  }
+  if (
+    order.payment_method !== "cash" &&
+    order.payment_method !== "card_terminal"
+  ) {
+    return { ok: false, error: "Este pedido no se cobra al entregar." };
+  }
+  if (order.payment_status === "paid") {
+    return { ok: false, error: "El pedido ya está marcado como pagado." };
+  }
+  if (order.payment_status !== "pending") {
+    return { ok: false, error: "El pago no está pendiente de cobro." };
+  }
+
+  const { error } = await gate.supabase
+    .from("orders")
+    .update({ payment_status: "paid" })
+    .eq("id", orderId)
+    .eq("driver_id", gate.driverId)
+    .eq("status", "in_transit");
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/driver");
+  revalidatePath(`/driver/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+  return { ok: true };
+}
+
 export async function markDelivered(orderId: string): Promise<ActionResult> {
   const gate = await requireDriverClient();
   if (!gate.ok) return { ok: false, error: gate.error };
 
   const { data: order, error: fetchError } = await gate.supabase
     .from("orders")
-    .select("id, status, driver_id")
+    .select("id, status, driver_id, payment_method, payment_status")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -100,6 +154,16 @@ export async function markDelivered(orderId: string): Promise<ActionResult> {
     return { ok: false, error: "El pedido no está en camino." };
   }
 
+  const collectOnDelivery =
+    order.payment_method === "cash" ||
+    order.payment_method === "card_terminal";
+  if (collectOnDelivery && order.payment_status !== "paid") {
+    return {
+      ok: false,
+      error: "Marca el pedido como pagado antes de entregar.",
+    };
+  }
+
   const { error } = await gate.supabase
     .from("orders")
     .update({ status: "delivered" satisfies OrderStatus })
@@ -108,9 +172,15 @@ export async function markDelivered(orderId: string): Promise<ActionResult> {
 
   if (error) return { ok: false, error: error.message };
 
+  const deliveredCopy = copyForOrderStatus("delivered", orderId);
+  if (deliveredCopy) {
+    await notifyClient({ supabase: gate.supabase, payload: deliveredCopy });
+  }
+
   revalidatePath("/driver");
   revalidatePath(`/driver/orders/${orderId}`);
   revalidatePath(`/tracker/${orderId}`);
+  revalidatePath("/admin/orders");
   return { ok: true };
 }
 
@@ -158,5 +228,13 @@ export async function upsertDriverLocation(input: {
   );
 
   if (error) return { ok: false, error: error.message };
+
+  void maybeNotifyDriverNearby({
+    supabase: gate.supabase,
+    orderId: input.orderId,
+    driverLat: input.lat,
+    driverLng: input.lng,
+  });
+
   return { ok: true };
 }

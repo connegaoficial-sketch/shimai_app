@@ -39,6 +39,13 @@ export type CheckoutSuccessResponse = {
   discount?: number;
   promo_code?: string | null;
   promo_label?: string | null;
+  promo_type?: string | null;
+  promo_lines?: Array<{
+    kind: "money" | "delivery";
+    type: string;
+    label: string;
+    amount: number | null;
+  }>;
   delivery_distance_km?: number;
   total: number;
   items: Array<{

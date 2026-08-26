@@ -3,9 +3,13 @@
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
+import { useOrderingGate } from "@/components/public/OrderingGate";
+import { ProductCardMeta } from "@/components/public/ProductCardMeta";
+import { ProductPromoBadges } from "@/components/public/ProductPromoBadges";
 import { formatMxn } from "@/lib/format";
 import { shimaiBrand } from "@/lib/brand/shimai";
 import type { MenuProduct } from "@/lib/menu/get-menu-data";
+import type { ProductPromoBadge } from "@/lib/promos/promos";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { useCartUiStore } from "@/stores/cartUiStore";
@@ -13,12 +17,14 @@ import { useCartUiStore } from "@/stores/cartUiStore";
 type FeaturedProductProps = {
   product: MenuProduct;
   accent?: "gold" | "sakura";
+  promoBadges?: ProductPromoBadge[];
   onOpenDetail: () => void;
 };
 
 export function FeaturedProduct({
   product,
   accent = "gold",
+  promoBadges = [],
   onOpenDetail,
 }: FeaturedProductProps) {
   const quantity = useCartStore(
@@ -26,6 +32,7 @@ export function FeaturedProduct({
   );
   const addItem = useCartStore((s) => s.addItem);
   const notifyAdded = useCartUiStore((s) => s.notifyAdded);
+  const { acceptingOrders } = useOrderingGate();
 
   const isSakura = accent === "sakura";
   const accentText = isSakura ? "text-shimai-sakura" : "text-shimai-gold";
@@ -118,13 +125,16 @@ export function FeaturedProduct({
                 ? shimaiBrand.popularLabel
                 : "Buena primera pieza"}
             </p>
+            <ProductPromoBadges badges={promoBadges} placement="inline" />
             <h3 className="font-serif text-3xl leading-[1.1] tracking-tight text-shimai-ivory sm:text-4xl">
               {product.name}
             </h3>
-            {product.description ? (
-              <p className="line-clamp-3 max-w-md font-sans text-sm leading-relaxed text-shimai-ivory/55">
-                {product.description}
-              </p>
+            {product.is_sushi || product.description ? (
+              <ProductCardMeta
+                product={product}
+                compact={false}
+                className="max-w-md"
+              />
             ) : (
               <p className="max-w-md font-sans text-sm leading-relaxed text-shimai-ivory/55">
                 Súmala al pedido y, si te falta algo, el carrito te sugiere el
@@ -146,7 +156,7 @@ export function FeaturedProduct({
               variant="ghost"
               glow={false}
               className={cn(
-                "h-11 border px-4 text-shimai-ivory",
+                "h-11 rounded-full border px-4 text-shimai-ivory",
                 accentBorder,
                 isSakura
                   ? "hover:border-shimai-sakura hover:text-shimai-sakura"
@@ -158,14 +168,17 @@ export function FeaturedProduct({
             </Button>
             {quantity === 0 ? (
               <Button
-                className="h-11 px-5"
+                className="h-11 rounded-full px-6"
                 variant={isSakura ? "sakura" : "primary"}
+                disabled={!acceptingOrders}
+                glow={acceptingOrders}
                 onClick={() => {
+                  if (!acceptingOrders) return;
                   addItem(product.id, 1);
                   notifyAdded(product.name);
                 }}
               >
-                Empezar con esta
+                {acceptingOrders ? shimaiBrand.featuredCta : "Hoy descansamos"}
               </Button>
             ) : (
               <p className="font-sans text-xs uppercase tracking-[0.16em] text-shimai-ivory/45">

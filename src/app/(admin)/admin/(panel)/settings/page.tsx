@@ -2,6 +2,8 @@ import { DEFAULT_WHATSAPP_CONTACT } from "@/lib/contact/whatsapp";
 import { SettingsAdmin } from "@/components/admin/SettingsAdmin";
 import { DEFAULT_DELIVERY_CONFIG } from "@/lib/delivery/default-config";
 import { normalizeDeliveryConfig } from "@/lib/delivery/zones";
+import { parseOrderingSchedule } from "@/lib/ordering/schedule";
+import { parseSistersStory } from "@/lib/sisters/sisters";
 import { createClient } from "@/lib/supabase/server";
 import type {
   BankDetailsSetting,
@@ -9,7 +11,7 @@ import type {
   PaymentMethodsSetting,
   WhatsAppContactSetting,
 } from "@/types/database";
-import { DEFAULT_PROMOS, parsePromosSetting } from "@/lib/promos/promos";
+
 const DEFAULT_PAYMENTS: PaymentMethodsSetting = {
   card_online: true,
   cash: true,
@@ -37,7 +39,8 @@ export default async function AdminSettingsPage() {
       "bank_details",
       "delivery_config",
       "whatsapp_contact",
-      "promos",
+      "ordering_schedule",
+      "sisters_story",
     ]);
 
   if (error) {
@@ -64,7 +67,8 @@ export default async function AdminSettingsPage() {
         (byKey.get("whatsapp_contact") as WhatsAppContactSetting | undefined) ??
         DEFAULT_WHATSAPP_CONTACT
       }
-      promos={parsePromosSetting(byKey.get("promos")) ?? DEFAULT_PROMOS}
+      orderingSchedule={parseOrderingSchedule(byKey.get("ordering_schedule"))}
+      sistersStory={parseSistersStory(byKey.get("sisters_story"))}
     />
   );
 }

@@ -159,6 +159,9 @@ export type Database = {
           image_url: string | null;
           is_available: boolean;
           is_signature: boolean;
+          is_sushi: boolean;
+          filling: string | null;
+          topping: string | null;
           sort_order: number;
           created_at: string;
         };
@@ -171,6 +174,9 @@ export type Database = {
           image_url?: string | null;
           is_available?: boolean;
           is_signature?: boolean;
+          is_sushi?: boolean;
+          filling?: string | null;
+          topping?: string | null;
           sort_order?: number;
           created_at?: string;
         };
@@ -183,6 +189,9 @@ export type Database = {
           image_url?: string | null;
           is_available?: boolean;
           is_signature?: boolean;
+          is_sushi?: boolean;
+          filling?: string | null;
+          topping?: string | null;
           sort_order?: number;
           created_at?: string;
         };
@@ -403,6 +412,206 @@ export type Database = {
             foreignKeyName: "tracker_presence_order_id_fkey";
             columns: ["order_id"];
             isOneToOne: true;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      driver_notifications: {
+        Row: {
+          id: string;
+          driver_id: string;
+          order_id: string | null;
+          kind: string;
+          title: string;
+          body: string;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          driver_id: string;
+          order_id?: string | null;
+          kind?: string;
+          title: string;
+          body: string;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          driver_id?: string;
+          order_id?: string | null;
+          kind?: string;
+          title?: string;
+          body?: string;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "driver_notifications_driver_id_fkey";
+            columns: ["driver_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "driver_notifications_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      driver_push_subscriptions: {
+        Row: {
+          id: string;
+          driver_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          driver_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          driver_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "driver_push_subscriptions_driver_id_fkey";
+            columns: ["driver_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      client_notifications: {
+        Row: {
+          id: string;
+          order_id: string;
+          kind: string;
+          title: string;
+          body: string;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          kind: string;
+          title: string;
+          body: string;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          kind?: string;
+          title?: string;
+          body?: string;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "client_notifications_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      client_push_subscriptions: {
+        Row: {
+          id: string;
+          order_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "client_push_subscriptions_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notification_log: {
+        Row: {
+          id: string;
+          event_kind: string;
+          order_id: string | null;
+          recipient_role: string;
+          recipient_id: string | null;
+          push_sent: boolean;
+          in_app_sent: boolean;
+          error: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_kind: string;
+          order_id?: string | null;
+          recipient_role: string;
+          recipient_id?: string | null;
+          push_sent?: boolean;
+          in_app_sent?: boolean;
+          error?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_kind?: string;
+          order_id?: string | null;
+          recipient_role?: string;
+          recipient_id?: string | null;
+          push_sent?: boolean;
+          in_app_sent?: boolean;
+          error?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_log_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
             referencedRelation: "orders";
             referencedColumns: ["id"];
           },

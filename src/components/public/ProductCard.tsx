@@ -3,8 +3,12 @@
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
+import { useOrderingGate } from "@/components/public/OrderingGate";
+import { ProductCardMeta } from "@/components/public/ProductCardMeta";
+import { ProductPromoBadges } from "@/components/public/ProductPromoBadges";
 import { shimaiBrand } from "@/lib/brand/shimai";
 import { formatMxn } from "@/lib/format";
+import type { ProductPromoBadge } from "@/lib/promos/promos";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { useCartUiStore } from "@/stores/cartUiStore";
@@ -13,12 +17,14 @@ import type { MenuProduct } from "@/lib/menu/get-menu-data";
 type ProductCardProps = {
   product: MenuProduct;
   accent?: "gold" | "sakura";
+  promoBadges?: ProductPromoBadge[];
   onOpenDetail?: () => void;
 };
 
 export function ProductCard({
   product,
   accent = "gold",
+  promoBadges = [],
   onOpenDetail,
 }: ProductCardProps) {
   const quantity = useCartStore(
@@ -27,6 +33,7 @@ export function ProductCard({
   const addItem = useCartStore((s) => s.addItem);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const notifyAdded = useCartUiStore((s) => s.notifyAdded);
+  const { acceptingOrders } = useOrderingGate();
 
   const isSakura = accent === "sakura";
   const accentText = isSakura ? "text-shimai-sakura" : "text-shimai-gold";
@@ -119,6 +126,8 @@ export function ProductCard({
             {shimaiBrand.popularShort}
           </span>
         ) : null}
+
+        <ProductPromoBadges badges={promoBadges} placement="overlay" />
       </button>
 
       <div className="flex flex-1 flex-col gap-3 p-3.5 sm:p-4">
@@ -129,7 +138,7 @@ export function ProductCard({
         >
           <h3
             className={cn(
-              "font-serif text-[0.95rem] font-medium leading-snug text-shimai-ivory transition-colors duration-200 sm:text-base",
+              "line-clamp-2 min-h-[2.5rem] font-serif text-[0.95rem] font-medium leading-snug text-shimai-ivory transition-colors duration-200 sm:min-h-[2.75rem] sm:text-base",
               isSakura
                 ? "group-hover:text-shimai-sakura"
                 : "group-hover:text-shimai-gold",
@@ -137,11 +146,7 @@ export function ProductCard({
           >
             {product.name}
           </h3>
-          {product.description ? (
-            <p className="line-clamp-2 font-sans text-xs leading-relaxed text-shimai-ivory/50">
-              {product.description}
-            </p>
-          ) : null}
+          <ProductCardMeta product={product} />
         </button>
 
         <div className="mt-auto flex items-end justify-between gap-2">
@@ -158,20 +163,22 @@ export function ProductCard({
             <Button
               variant="ghost"
               size="sm"
+              disabled={!acceptingOrders}
               className={cn(
-                "border px-3 text-shimai-ivory transition-[border-color,color,transform] duration-200",
+                "rounded-full border px-3 text-shimai-ivory transition-[border-color,color,transform] duration-200",
                 isSakura
                   ? "border-shimai-sakura/25 hover:border-shimai-sakura/55 hover:text-shimai-sakura"
                   : "border-shimai-ivory/15 hover:border-shimai-gold/45 hover:text-shimai-gold",
               )}
               onClick={() => {
+                if (!acceptingOrders) return;
                 addItem(product.id, 1);
                 notifyAdded(product.name);
               }}
             >
-              Agregar
+              {acceptingOrders ? "Agregar" : "Hoy no"}
             </Button>
-          ) : (
+          ) : acceptingOrders ? (
             <div
               className={cn(
                 "flex h-8 items-center gap-2 border px-1",
@@ -198,6 +205,10 @@ export function ProductCard({
                 +
               </button>
             </div>
+          ) : (
+            <p className="font-sans text-[10px] uppercase tracking-[0.14em] text-shimai-ivory/40">
+              Hoy descansamos
+            </p>
           )}
         </div>
       </div>

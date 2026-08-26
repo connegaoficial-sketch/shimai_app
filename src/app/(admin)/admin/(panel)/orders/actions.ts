@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdminClient } from "@/lib/admin/require-admin";
+import { assignDriverToOrder } from "@/lib/driver/assign-driver";
+import {
+  copyDriverAssigned,
+  copyForOrderStatus,
+} from "@/lib/notifications/events";
+import { notifyClient, notifyDriver } from "@/lib/notifications/dispatch";
 import type { OrderStatus } from "@/types/database";
 
 const ALLOWED_STATUS: ReadonlySet<OrderStatus> = new Set([
@@ -37,6 +43,38 @@ export async function updateOrderStatus(
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  const clientCopy = copyForOrderStatus(status, orderId);
+  if (clientCopy) {
+    await notifyClient({ supabase: gate.supabase, payload: clientCopy });
+    revalidatePath(`/tracker/${orderId}`);
+  }
+
+  if (status === "ready_for_pickup") {
+    const { data: orderRow } = await gate.supabase
+      .from("orders")
+      .select("id, total, driver_id")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    const assignment = await assignDriverToOrder(gate.supabase, orderId);
+
+    if (assignment.assigned && assignment.driverId && orderRow) {
+      const totalMxn = new Intl.NumberFormat("es-MX", {
+        style: "currency",
+        currency: "MXN",
+        maximumFractionDigits: 0,
+      }).format(Number(orderRow.total));
+
+      await notifyDriver({
+        supabase: gate.supabase,
+        driverId: assignment.driverId,
+        payload: copyDriverAssigned(orderId, totalMxn),
+      });
+      revalidatePath("/driver");
+      revalidatePath(`/driver/orders/${orderId}`);
+    }
   }
 
   revalidatePath("/admin/orders");

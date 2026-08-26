@@ -3,6 +3,9 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
+import { PushPermissionBanner } from "@/components/pwa/PushPermissionBanner";
+import { ClientNotificationListener } from "@/components/tracker/ClientNotificationListener";
+import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 import { createClient } from "@/lib/supabase/client";
 import type { OrderStatus } from "@/types/database";
 
@@ -53,14 +56,20 @@ function driverStatusLine(input: {
   driverName: string | null;
   hasDriverPin: boolean;
 }): string | null {
+  if (input.status === "in_transit") {
+    if (input.driverName) {
+      return `Repartidor: ${input.driverName} · en ruta hacia ti`;
+    }
+    if (input.hasDriverPin) {
+      return "Ubicación en vivo · siguiendo en el mapa";
+    }
+    return "Repartidor en ruta hacia ti";
+  }
+
   if (input.driverName) {
     return `Repartidor: ${input.driverName}`;
   }
-  if (
-    input.hasDriverPin ||
-    input.status === "in_transit" ||
-    input.status === "delivered"
-  ) {
+  if (input.hasDriverPin || input.status === "delivered") {
     return "Repartidor en camino";
   }
   if (input.status === "ready_for_pickup") {
@@ -70,6 +79,57 @@ function driverStatusLine(input: {
     return null;
   }
   return "Asignando repartidor…";
+}
+
+/** Soft kitchen activity — staggered sakura orbs + breathing glow. */
+function PreparingMotion() {
+  return (
+    <div
+      className="shimai-prep-motion mt-3"
+      aria-hidden
+    >
+      <span className="shimai-prep-glow" />
+      <span className="shimai-prep-orb" />
+      <span className="shimai-prep-orb" />
+      <span className="shimai-prep-orb" />
+      <span className="font-sans text-xs tracking-wide text-shimai-sakura/70">
+        En cocina
+      </span>
+    </div>
+  );
+}
+
+/** Driver en route to pick up — gold dot travels toward the order. */
+function PickupMotion() {
+  return (
+    <div className="shimai-pickup-motion mt-3" aria-hidden>
+      <div className="shimai-pickup-track">
+        <span className="shimai-pickup-endpoint shimai-pickup-endpoint--start" />
+        <span className="shimai-pickup-dot" />
+        <span className="shimai-pickup-endpoint shimai-pickup-endpoint--end" />
+      </div>
+      <span className="font-sans text-xs tracking-wide text-shimai-gold/75">
+        Va por tu pedido
+      </span>
+    </div>
+  );
+}
+
+/** Active delivery — gold repartidor dot en route to sakura destination. */
+function TransitMotion() {
+  return (
+    <div className="shimai-transit-motion mt-3" aria-hidden>
+      <div className="shimai-transit-track">
+        <span className="shimai-transit-endpoint shimai-transit-endpoint--start" />
+        <span className="shimai-transit-trail" />
+        <span className="shimai-transit-dot" />
+        <span className="shimai-transit-endpoint shimai-transit-endpoint--end" />
+      </div>
+      <span className="font-sans text-xs tracking-wide text-shimai-gold/75">
+        En movimiento hacia ti
+      </span>
+    </div>
+  );
 }
 
 export function TrackerClient({
@@ -84,6 +144,13 @@ export function TrackerClient({
   const [displayDriverName, setDisplayDriverName] = useState(driverName);
 
   const supabase = useMemo(() => createClient(), []);
+
+  useLiveRefresh({
+    table: "client_notifications",
+    filter: `order_id=eq.${orderId}`,
+    pollMs: 3000,
+    enabled: status !== "delivered" && status !== "cancelled",
+  });
 
   useEffect(() => {
     setDisplayDriverName(driverName);
@@ -178,6 +245,7 @@ export function TrackerClient({
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-shimai-black text-shimai-ivory">
+      <ClientNotificationListener orderId={orderId} />
       <header className="shrink-0 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]">
         <p className="font-serif text-lg tracking-wide text-shimai-ivory">
           SHIMAI
@@ -189,6 +257,16 @@ export function TrackerClient({
       </div>
 
       <div className="flex-[0.3] overflow-y-auto border-t border-white/[0.08] bg-shimai-black px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
+        {status !== "delivered" && status !== "cancelled" ? (
+          <div className="mx-auto mb-3 max-w-lg">
+            <PushPermissionBanner
+              audience="client"
+              orderId={orderId}
+              title="Avisos de tu pedido"
+              description="Te avisamos cuando salga de cocina, vaya en camino o el repartidor esté cerca."
+            />
+          </div>
+        ) : null}
         <div className="mx-auto max-w-lg rounded-md border border-shimai-gold/25 bg-shimai-surface/70 p-4">
           <p className="font-sans text-[11px] uppercase tracking-[0.16em] text-shimai-gold">
             Estado
@@ -196,6 +274,9 @@ export function TrackerClient({
           <p className="mt-2 font-serif text-xl text-shimai-ivory sm:text-2xl">
             {statusCopy(status)}
           </p>
+          {status === "preparing" ? <PreparingMotion /> : null}
+          {status === "ready_for_pickup" ? <PickupMotion /> : null}
+          {status === "in_transit" ? <TransitMotion /> : null}
           {driverLine ? (
             <p className="mt-2 font-sans text-sm text-shimai-ivory/55">
               {driverLine}

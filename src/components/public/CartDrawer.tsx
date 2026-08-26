@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { CrossSellRail } from "@/components/public/CrossSellRail";
+import { useOrderingGate } from "@/components/public/OrderingGate";
 import { Button } from "@/components/ui/button";
 import { formatMxn } from "@/lib/format";
 import { getCrossSellProducts } from "@/lib/menu/cross-sell";
@@ -30,6 +31,7 @@ export function CartDrawer({
   const removeItem = useCartStore((s) => s.removeItem);
   const [isPending, startTransition] = useTransition();
   const [goingCheckout, setGoingCheckout] = useState(false);
+  const { acceptingOrders, headline, body } = useOrderingGate();
 
   const busy = goingCheckout || isPending;
 
@@ -114,7 +116,7 @@ export function CartDrawer({
               </p>
               <Button
                 variant="outline"
-                className="mx-auto"
+                className="mx-auto rounded-full"
                 onClick={() => {
                   onClose();
                   document
@@ -210,12 +212,22 @@ export function CartDrawer({
             "pb-[max(1.25rem,env(safe-area-inset-bottom))]",
           )}
         >
+          {!acceptingOrders ? (
+            <div className="mb-4 space-y-1 text-center">
+              <p className="font-serif text-lg text-shimai-ivory">{headline}</p>
+              <p className="font-sans text-xs leading-relaxed text-shimai-ivory/50">
+                {body}
+              </p>
+            </div>
+          ) : null}
           <Button
             variant="primary"
             size="lg"
-            className="w-full font-sans tracking-wide"
-            disabled={items.length === 0 || busy}
+            className="w-full rounded-full font-sans tracking-wide"
+            disabled={items.length === 0 || busy || !acceptingOrders}
+            glow={acceptingOrders}
             onClick={() => {
+              if (!acceptingOrders) return;
               // Keep the drawer open so the menu doesn't flash while /checkout loads.
               setGoingCheckout(true);
               startTransition(() => {
@@ -223,11 +235,13 @@ export function CartDrawer({
               });
             }}
           >
-            {items.length === 0
-              ? "Carrito vacío"
-              : busy
-                ? "Abriendo pedido…"
-                : "Continuar pedido"}
+            {!acceptingOrders
+              ? "Hoy no recibimos pedidos"
+              : items.length === 0
+                ? "Carrito vacío"
+                : busy
+                  ? "Abriendo pedido…"
+                  : "Continuar pedido"}
           </Button>
         </div>
       </aside>

@@ -1,0 +1,33 @@
+{
+  "name": "SHIMAI Repartidor",
+  "short_name": "SHIMAI Reparto",
+  "description": "Entregas SHIMAI — repartidores",
+  "start_url": "/driver/login",
+  "scope": "/driver",
+  "id": "/driver",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "orientation": "portrait-primary",
+  "categories": ["navigation", "business"],
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

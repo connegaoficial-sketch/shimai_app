@@ -14,6 +14,9 @@ export type ProductInput = {
   category_id: string;
   is_available: boolean;
   is_signature: boolean;
+  is_sushi: boolean;
+  filling: string;
+  topping: string;
   image_url: string | null;
 };
 
@@ -40,11 +43,16 @@ export async function upsertProduct(input: ProductInput): Promise<ActionResult> 
 
   const payload = {
     name: input.name.trim(),
-    description: input.description.trim() || null,
+    description: input.is_sushi
+      ? null
+      : input.description.trim() || null,
     price: input.price,
     category_id: input.category_id,
     is_available: input.is_available,
     is_signature: input.is_signature,
+    is_sushi: input.is_sushi,
+    filling: input.is_sushi ? input.filling.trim() || null : null,
+    topping: input.is_sushi ? input.topping.trim() || null : null,
     image_url: input.image_url,
   };
 

@@ -1,7 +1,11 @@
-import { shimaiBrand } from "@/lib/brand/shimai";
 import { cn } from "@/lib/utils";
+import type { SistersStorySetting } from "@/lib/sisters/sisters";
 
-export function SistersStory() {
+type SistersStoryProps = {
+  story: SistersStorySetting;
+};
+
+export function SistersStory({ story }: SistersStoryProps) {
   return (
     <section
       aria-labelledby="sisters-heading"
@@ -13,16 +17,15 @@ export function SistersStory() {
             id="sisters-heading"
             className="font-serif text-3xl leading-tight text-shimai-ivory sm:text-4xl"
           >
-            Cocina de hermanas, menú fácil de elegir
+            {story.heading}
           </h2>
           <p className="mt-3 font-sans text-sm leading-relaxed text-shimai-ivory/50">
-            Tres caminos según tu antojo. No hace falta memorizar el menú: elige
-            el que suena a lo que quieres hoy.
+            {story.support}
           </p>
         </header>
 
         <div className="grid gap-px bg-white/[0.06] md:grid-cols-3">
-          {shimaiBrand.sisters.map((sister, index) => {
+          {story.sisters.map((sister, index) => {
             const isSakura = sister.accent === "sakura";
             return (
               <article

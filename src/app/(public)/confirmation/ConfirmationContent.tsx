@@ -73,26 +73,23 @@ export function ConfirmationContent({ whatsappPhone }: ConfirmationContentProps)
             </p>
             <OrderTotals result={result} />
 
-            <div className="mt-8 space-y-4 border border-shimai-gold/30 bg-shimai-surface/80 p-5">
+            <div className="mt-8 space-y-4 border border-shimai-sakura/35 bg-shimai-surface/80 p-5">
               <Detail label="Banco" value={bank?.bank_name || "—"} />
               <Detail label="Titular" value={bank?.holder_name || "—"} />
               <Detail
                 label="CLABE"
                 value={bank?.clabe || "—"}
-                emphasize
                 copyable
               />
               <Detail
                 label="Cuenta"
                 value={bank?.account_number || "—"}
-                emphasize
                 copyable
               />
               {typeof result?.total === "number" ? (
                 <Detail
                   label="Total a transferir"
                   value={formatMxn(result.total)}
-                  emphasize
                 />
               ) : null}
             </div>
@@ -165,6 +162,15 @@ export function ConfirmationContent({ whatsappPhone }: ConfirmationContentProps)
 function OrderTotals({ result }: { result: StoredCheckoutResult | null }) {
   if (!result || typeof result.total !== "number") return null;
 
+  const promoLines = result.promo_lines ?? [];
+  const moneyLines = promoLines.filter(
+    (line) => line.kind === "money" && (line.amount ?? 0) > 0,
+  );
+  const deliveryPromo = promoLines.find((line) => line.kind === "delivery");
+  const deliveryFee =
+    typeof result.delivery_fee === "number" ? result.delivery_fee : null;
+  const fallbackLabel = result.promo_label || "Descuento por promoción";
+
   return (
     <div className="mt-6 space-y-3 border border-white/[0.08] bg-shimai-surface/70 p-5">
       {result.items?.length ? (
@@ -186,13 +192,36 @@ function OrderTotals({ result }: { result: StoredCheckoutResult | null }) {
       ) : null}
       <div className="space-y-2 border-t border-white/[0.06] pt-3">
         <Detail label="Subtotal" value={formatMxn(result.subtotal)} />
-        <Detail label="Envío" value={formatMxn(result.delivery_fee)} />
-        {typeof result.discount === "number" && result.discount > 0 ? (
-          <Detail
-            label={result.promo_label || "Descuento"}
-            value={`− ${formatMxn(result.discount)}`}
-          />
-        ) : null}
+        <Detail
+          label={
+            deliveryFee === 0 && deliveryPromo
+              ? `Envío · ${deliveryPromo.label}`
+              : "Envío"
+          }
+          value={
+            deliveryFee == null
+              ? "—"
+              : deliveryFee === 0
+                ? "Gratis"
+                : formatMxn(deliveryFee)
+          }
+        />
+        {moneyLines.length > 0
+          ? moneyLines.map((line) => (
+              <Detail
+                key={`${line.type}-${line.label}`}
+                label={`Promoción · ${line.label}`}
+                value={`− ${formatMxn(line.amount ?? 0)}`}
+              />
+            ))
+          : typeof result.discount === "number" && result.discount > 0
+            ? (
+              <Detail
+                label={`Promoción · ${fallbackLabel}`}
+                value={`− ${formatMxn(result.discount)}`}
+              />
+            )
+            : null}
         <Detail label="Total" value={formatMxn(result.total)} emphasize />
       </div>
     </div>
@@ -219,7 +248,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       type="button"
       onClick={() => void copy()}
       aria-label={copied ? `${label} copiado` : `Copiar ${label}`}
-      className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-shimai-gold/35 text-shimai-gold transition-colors hover:border-shimai-gold hover:bg-shimai-gold/10"
+      className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-shimai-sakura/45 text-shimai-sakura transition-colors hover:border-shimai-sakura hover:bg-shimai-sakura/10"
     >
       {copied ? (
         <span className="font-sans text-xs font-medium" aria-hidden>

@@ -83,7 +83,7 @@ export function WhatsAppFab({ phone, message }: WhatsAppFabProps) {
         maxWidth: "calc(100vw - 2.5rem)",
       }}
     >
-      <span className="shimai-glow-border shimai-glow-border--round shimai-glow-border--thick pointer-events-auto inline-flex size-fit shrink-0">
+      <span className="shimai-glow-border shimai-glow-border--round pointer-events-auto inline-flex size-fit shrink-0">
         <Link
           href={href}
           target="_blank"

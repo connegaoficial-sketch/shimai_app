@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { CartDrawer } from "@/components/public/CartDrawer";
+import { useOrderingGate } from "@/components/public/OrderingGate";
 import { ShimaiLogo } from "@/components/public/ShimaiLogo";
 import { shimaiBrand } from "@/lib/brand/shimai";
 import type { MenuCategory, MenuProduct } from "@/lib/menu/get-menu-data";
@@ -21,6 +22,7 @@ export function SiteHeader({ products, categories }: SiteHeaderProps) {
   const cartOpen = useCartUiStore((s) => s.drawerOpen);
   const openDrawer = useCartUiStore((s) => s.openDrawer);
   const closeDrawer = useCartUiStore((s) => s.closeDrawer);
+  const { acceptingOrders } = useOrderingGate();
 
   useEffect(() => {
     setMounted(true);
@@ -59,13 +61,13 @@ export function SiteHeader({ products, categories }: SiteHeaderProps) {
               onClick={scrollToMenu}
               className="hidden h-11 items-center px-3 font-sans text-[11px] uppercase tracking-[0.16em] text-shimai-ivory/60 transition-[color,transform] duration-150 ease-out hover:text-shimai-gold active:scale-[0.97] sm:flex"
             >
-              {shimaiBrand.primaryCta}
+              {acceptingOrders ? shimaiBrand.primaryCta : "Ver la carta"}
             </button>
 
             <button
               type="button"
               onClick={openDrawer}
-              className="relative flex h-11 min-w-11 items-center gap-2 border border-shimai-gold/30 px-3 font-sans text-xs uppercase tracking-[0.16em] text-shimai-ivory transition-[color,border-color,transform] duration-150 ease-out hover:border-shimai-gold hover:text-shimai-gold active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shimai-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-shimai-black"
+              className="relative flex h-11 min-w-11 items-center gap-2 rounded-full border border-shimai-gold/30 px-4 font-sans text-xs uppercase tracking-[0.16em] text-shimai-ivory transition-[color,border-color,transform] duration-150 ease-out hover:border-shimai-gold hover:text-shimai-gold active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shimai-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-shimai-black"
               aria-label={
                 visibleCount > 0
                   ? `Abrir carrito, ${visibleCount} productos`

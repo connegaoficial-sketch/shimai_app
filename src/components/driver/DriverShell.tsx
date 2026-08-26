@@ -3,14 +3,18 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import { DriverNotificationListener } from "@/components/driver/DriverNotificationListener";
+import { PushPermissionBanner } from "@/components/pwa/PushPermissionBanner";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 export function DriverShell({
+  driverId,
   driverName,
   children,
 }: {
+  driverId: string;
   driverName: string;
   children: React.ReactNode;
 }) {
@@ -26,6 +30,7 @@ export function DriverShell({
 
   return (
     <div className="flex min-h-dvh flex-col bg-shimai-black text-shimai-ivory">
+      <DriverNotificationListener driverId={driverId} />
       <header className="sticky top-0 z-20 border-b border-white/[0.08] bg-shimai-black/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
           <Link href="/driver" className="min-w-0">
@@ -57,7 +62,14 @@ export function DriverShell({
           </Link>
         </nav>
       </header>
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4">{children}</main>
+      <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4">
+        <PushPermissionBanner
+          audience="driver"
+          title="Avisos de nuevos repartos"
+          description="Permite notificaciones para enterarte al instante cuando te asignen un pedido, aunque la app esté en segundo plano."
+        />
+        <div className="mt-4">{children}</div>
+      </main>
     </div>
   );
 }

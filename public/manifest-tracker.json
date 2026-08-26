@@ -1,0 +1,33 @@
+{
+  "name": "SHIMAI · Mi pedido",
+  "short_name": "Mi pedido",
+  "description": "Sigue tu pedido SHIMAI en tiempo real",
+  "start_url": "/",
+  "scope": "/tracker",
+  "id": "/tracker",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "orientation": "portrait-primary",
+  "categories": ["food"],
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -16,7 +16,7 @@
   --font-serif: var(--font-playfair);
 }
 
-/* Rotating sakura glow — behind the button, outside its box */
+/* Rotating sakura glow — shared by every conic CTA (Button, hero, WhatsApp, …) */
 @property --shimai-glow-angle {
   syntax: "<angle>";
   initial-value: 0deg;
@@ -30,8 +30,10 @@
 }
 
 /*
-  Glow layers sit BEHIND the child (z-index: -1).
-  No fill on the wrapper — only a thin outer ring + soft bloom.
+  One gradient + one ring technique for all glow CTAs:
+  - ::before soft bloom (same conic, blurred)
+  - ::after thin masked ring (contour only, never fills the face)
+  - layers under the face (z-index: 0), face at z-index: 1
 */
 .shimai-glow-border {
   --shimai-glow-angle: 0deg;
@@ -40,57 +42,73 @@
   position: relative;
   overflow: visible;
   vertical-align: middle;
-  isolation: isolate; /* keep glow behind the button, not behind the page */
-  border-radius: 0.375rem;
+  isolation: isolate;
+  border-radius: 9999px;
   padding: 0;
   background: transparent;
+  z-index: 0;
 }
 
-/* Soft bloom behind */
+/* Soft bloom behind — outside the face */
 .shimai-glow-border::before {
   content: "";
   position: absolute;
   inset: -5px;
-  z-index: -2;
+  z-index: 0;
   border-radius: inherit;
   pointer-events: none;
   background: conic-gradient(
     from var(--shimai-glow-angle),
-    transparent 0deg,
-    transparent 55deg,
-    #ffe4ec 95deg,
-    #ff9eb8 135deg,
-    #fff0f5 165deg,
-    #ffb7c8 195deg,
-    #e8a5b5 225deg,
-    transparent 275deg,
-    transparent 360deg
+    #080808 0deg,
+    #080808 40deg,
+    #6b3040 75deg,
+    #e85a7a 105deg,
+    #ff9eb8 130deg,
+    #ffe4ec 155deg,
+    #fff5f8 175deg,
+    #ffb7c8 200deg,
+    #e85a7a 230deg,
+    #6b3040 265deg,
+    #080808 300deg,
+    #080808 360deg
   );
   filter: blur(8px);
-  opacity: 0.55;
+  opacity: 0.85;
   animation: shimai-glow-rotate 2.6s linear infinite;
 }
 
-/* Thin rotating ring behind the button — only the rim peeks past the edges */
+/* Thin rotating ring — mask punches out the center so only the contour shows */
 .shimai-glow-border::after {
   content: "";
   position: absolute;
   inset: calc(var(--shimai-glow-thickness) * -1);
-  z-index: -1;
+  z-index: 0;
   border-radius: inherit;
   pointer-events: none;
+  padding: var(--shimai-glow-thickness);
   background: conic-gradient(
     from var(--shimai-glow-angle),
-    transparent 0deg,
-    transparent 55deg,
-    #ffe4ec 95deg,
-    #ff9eb8 135deg,
-    #fff0f5 165deg,
-    #ffb7c8 195deg,
-    #e8a5b5 225deg,
-    transparent 275deg,
-    transparent 360deg
+    #080808 0deg,
+    #080808 40deg,
+    #6b3040 75deg,
+    #e85a7a 105deg,
+    #ff9eb8 130deg,
+    #ffe4ec 155deg,
+    #fff5f8 175deg,
+    #ffb7c8 200deg,
+    #e85a7a 230deg,
+    #6b3040 265deg,
+    #080808 300deg,
+    #080808 360deg
   );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
   animation: shimai-glow-rotate 2.6s linear infinite;
 }
 
@@ -98,6 +116,8 @@
   position: relative;
   z-index: 1;
   border-radius: inherit;
+  /* Solid face so bloom never reads through the fill */
+  isolation: isolate;
 }
 
 /* Disabled: fade the whole control so glow never shows through the face */
@@ -151,14 +171,9 @@
   border-radius: 9999px;
 }
 
+/* Same ring + brightness as default; only shape modifiers differ */
 .shimai-glow-border--thick {
-  --shimai-glow-thickness: 2.5px;
-}
-
-.shimai-glow-border--thick::before {
-  inset: -7px;
-  filter: blur(10px);
-  opacity: 0.65;
+  --shimai-glow-thickness: 2px;
 }
 
 .shimai-glow-border--square {
@@ -168,6 +183,14 @@
 
 .shimai-glow-border--square > * {
   border-radius: 0;
+}
+
+.shimai-glow-border--pill {
+  border-radius: 9999px;
+}
+
+.shimai-glow-border--pill > * {
+  border-radius: 9999px;
 }
 
 .shimai-glow-border--square.w-full,
@@ -289,8 +312,23 @@ h6 {
   }
 }
 
+@keyframes shimai-toast-in-top {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-shimai-toast-in {
   animation: shimai-toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-shimai-toast-in-top {
+  animation: shimai-toast-in-top 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .shimai-menu-fade {
@@ -452,14 +490,318 @@ h6 {
   transform: scale(0.985);
 }
 
+/* Tracker — preparing status: kitchen “in motion” */
+@keyframes shimai-prep-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes shimai-prep-orb {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0) scale(0.85);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.15);
+  }
+  70% {
+    opacity: 0.55;
+    transform: translateY(-1px) scale(1);
+  }
+}
+
+.shimai-prep-motion {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.shimai-prep-glow {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3.5rem;
+  height: 1.25rem;
+  translate: 0 -50%;
+  border-radius: 999px;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--color-shimai-sakura) 55%, transparent),
+    transparent 72%
+  );
+  pointer-events: none;
+  animation: shimai-prep-breathe 2.4s ease-in-out infinite;
+}
+
+.shimai-prep-orb {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--color-shimai-sakura);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-shimai-sakura) 70%, transparent);
+  animation: shimai-prep-orb 1.35s ease-in-out infinite;
+}
+
+.shimai-prep-orb:nth-child(2) {
+  animation-delay: 0s;
+}
+
+.shimai-prep-orb:nth-child(3) {
+  animation-delay: 0.22s;
+}
+
+.shimai-prep-orb:nth-child(4) {
+  animation-delay: 0.44s;
+}
+
+/* Tracker — pickup status: driver en route to kitchen */
+@keyframes shimai-pickup-travel {
+  0% {
+    left: 0;
+    opacity: 0.45;
+    transform: translateY(-50%) scale(0.85);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  88% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  100% {
+    left: calc(100% - 0.45rem);
+    opacity: 0.45;
+    transform: translateY(-50%) scale(0.85);
+  }
+}
+
+@keyframes shimai-pickup-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.shimai-pickup-motion {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.shimai-pickup-track {
+  position: relative;
+  width: 5.5rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-shimai-gold) 18%, transparent),
+    color-mix(in srgb, var(--color-shimai-gold) 45%, transparent)
+  );
+}
+
+.shimai-pickup-dot {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--color-shimai-gold);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-shimai-gold) 75%, transparent);
+  animation: shimai-pickup-travel 2.1s ease-in-out infinite;
+}
+
+.shimai-pickup-endpoint {
+  position: absolute;
+  top: 50%;
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 999px;
+  translate: 0 -50%;
+}
+
+.shimai-pickup-endpoint--start {
+  left: 0;
+  background: color-mix(in srgb, var(--color-shimai-ivory) 35%, transparent);
+}
+
+.shimai-pickup-endpoint--end {
+  right: 0;
+  background: var(--color-shimai-gold);
+  animation: shimai-pickup-pulse 2.1s ease-in-out infinite;
+}
+
+/* Tracker — in transit: live movement toward customer */
+@keyframes shimai-transit-travel {
+  0% {
+    left: 0;
+  }
+  100% {
+    left: calc(100% - 0.5rem);
+  }
+}
+
+@keyframes shimai-transit-trail {
+  0% {
+    left: 0;
+    opacity: 0;
+    width: 0.5rem;
+  }
+  15% {
+    opacity: 0.55;
+  }
+  100% {
+    left: calc(100% - 1.25rem);
+    opacity: 0;
+    width: 1.25rem;
+  }
+}
+
+@keyframes shimai-transit-dest {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-shimai-sakura) 0%, transparent);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--color-shimai-sakura) 65%, transparent);
+  }
+}
+
+.shimai-transit-motion {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.shimai-transit-track {
+  position: relative;
+  width: 6rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-shimai-gold) 35%, transparent),
+    color-mix(in srgb, var(--color-shimai-sakura) 40%, transparent)
+  );
+}
+
+.shimai-transit-dot {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 2;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--color-shimai-gold);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-shimai-gold) 80%, transparent);
+  animation: shimai-transit-travel 1.5s linear infinite;
+}
+
+.shimai-transit-trail {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 1;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--color-shimai-gold) 55%, transparent)
+  );
+  translate: 0 -50%;
+  animation: shimai-transit-trail 1.5s linear infinite;
+}
+
+.shimai-transit-endpoint {
+  position: absolute;
+  top: 50%;
+  width: 0.32rem;
+  height: 0.32rem;
+  border-radius: 999px;
+  translate: 0 -50%;
+}
+
+.shimai-transit-endpoint--start {
+  left: 0;
+  background: var(--color-shimai-gold);
+  opacity: 0.65;
+}
+
+.shimai-transit-endpoint--end {
+  right: 0;
+  background: var(--color-shimai-sakura);
+  animation: shimai-transit-dest 1.5s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-shimai-fade-up,
   .animate-shimai-drawer-in,
   .animate-shimai-backdrop-in,
   .animate-shimai-sheet-up,
   .animate-shimai-modal-in,
-  .animate-shimai-toast-in {
+  .animate-shimai-toast-in,
+  .animate-shimai-toast-in-top {
     animation: none;
+  }
+
+  .shimai-prep-glow,
+  .shimai-prep-orb {
+    animation: none;
+  }
+
+  .shimai-pickup-dot,
+  .shimai-pickup-endpoint--end {
+    animation: none;
+  }
+
+  .shimai-transit-dot,
+  .shimai-transit-trail,
+  .shimai-transit-endpoint--end {
+    animation: none;
+  }
+
+  .shimai-prep-orb {
+    opacity: 0.75;
+  }
+
+  .shimai-pickup-dot {
+    left: 55%;
+    opacity: 0.85;
+  }
+
+  .shimai-transit-dot {
+    left: 68%;
+    opacity: 0.9;
+  }
+
+  .shimai-transit-trail {
+    display: none;
   }
 
   .shimai-glow-border::before,
@@ -467,10 +809,12 @@ h6 {
     animation: none;
     background: linear-gradient(
       135deg,
-      #ffb7c8,
-      #e8a5b5,
+      #080808,
+      #e85a7a,
       #ffe4ec,
-      #ff9eb8
+      #fff5f8,
+      #e85a7a,
+      #080808
     );
   }
 
@@ -548,6 +892,20 @@ h6 {
     linear-gradient(to bottom, #080808 0%, transparent 22%, transparent 78%, #080808 100%);
 }
 
+/* Footer lockup — same soft dissolve as hero, scaled down into the black field */
+.shimai-footer-logo-vignette {
+  background:
+    radial-gradient(
+      ellipse 55% 50% at 50% 48%,
+      transparent 0%,
+      transparent 40%,
+      rgba(8, 8, 8, 0.45) 72%,
+      #080808 100%
+    ),
+    linear-gradient(to right, #080808 0%, transparent 14%, transparent 86%, #080808 100%),
+    linear-gradient(to bottom, #080808 0%, transparent 16%, transparent 84%, #080808 100%);
+}
+
 .shimai-hero-video-out {
   transition:
     opacity 800ms cubic-bezier(0.23, 1, 0.32, 1),
@@ -564,6 +922,30 @@ h6 {
 
 .shimai-hero-stage-resize {
   transition: min-height 650ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Sakura section dividers — soft dissolve, no hard frame */
+.shimai-sakura-divider-mask {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(0 0 0 / 0.35) 12%,
+    #000 28%,
+    #000 72%,
+    rgb(0 0 0 / 0.35) 88%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(0 0 0 / 0.35) 12%,
+    #000 28%,
+    #000 72%,
+    rgb(0 0 0 / 0.35) 88%,
+    transparent 100%
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {

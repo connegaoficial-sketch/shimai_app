@@ -1,6 +1,8 @@
 import { CartToast } from "@/components/public/CartToast";
 import { LandingHero } from "@/components/public/LandingHero";
 import { MenuView } from "@/components/public/MenuView";
+import { OrderingClosedBanner } from "@/components/public/OrderingClosedBanner";
+import { OrderingGateProvider } from "@/components/public/OrderingGate";
 import { OrderPath } from "@/components/public/OrderPath";
 import { PromoBanner } from "@/components/public/PromoBanner";
 import { SakuraDivider } from "@/components/public/SakuraDivider";
@@ -13,13 +15,17 @@ import type {
   MenuCategory,
   MenuProduct,
 } from "@/lib/menu/get-menu-data";
+import type { OrderingStatus } from "@/lib/ordering/schedule";
 import type { Promo } from "@/lib/promos/promos";
+import type { SistersStorySetting } from "@/lib/sisters/sisters";
 
 type PublicHomeProps = {
   categories: MenuCategory[];
   products: MenuProduct[];
   whatsappPhone: string;
   promos: Promo[];
+  orderingStatus: OrderingStatus;
+  sistersStory: SistersStorySetting;
 };
 
 /**
@@ -32,24 +38,27 @@ export function PublicHome({
   products,
   whatsappPhone,
   promos,
+  orderingStatus,
+  sistersStory,
 }: PublicHomeProps) {
   return (
-    <>
+    <OrderingGateProvider status={orderingStatus}>
       <SiteHeader products={products} categories={categories} />
+      <OrderingClosedBanner />
       <LandingHero />
       <SakuraDivider motif="petals" size="medium" />
-      <TrustStrip />
+      <TrustStrip hoursDetail={orderingStatus.hoursDetail} />
       <PromoBanner promos={promos} />
       <SakuraDivider motif="branches" size="large" />
-      <MenuView categories={categories} products={products} />
+      <MenuView categories={categories} products={products} promos={promos} />
       <SakuraDivider motif="branches" size="large" />
       <OrderPath />
       <SakuraDivider motif="petals" size="medium" />
-      <SistersStory />
+      <SistersStory story={sistersStory} />
       <SakuraDivider motif="petals" size="medium" />
-      <SiteFooter />
+      <SiteFooter hoursDetail={orderingStatus.hoursDetail} />
       <CartToast />
       <WhatsAppFab phone={whatsappPhone} />
-    </>
+    </OrderingGateProvider>
   );
 }

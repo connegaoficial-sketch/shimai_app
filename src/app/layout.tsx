@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   description:
     "SHIMAI SUSHI HOUSE — ¿Qué se te antoja? Si no sabes, ve por lo que más piden. Entrega en Rioverde, Ciudad Fernández y El Refugio. Horario 10 am–10 pm.",
   applicationName: "SHIMAI SUSHI",
-  manifest: "/manifest.json",
+  manifest: "/manifest-client.json",
   icons: {
     icon: [
       { url: "/icon-32x32.ico", sizes: "32x32" },

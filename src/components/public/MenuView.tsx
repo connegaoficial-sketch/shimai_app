@@ -6,6 +6,8 @@ import { FeaturedProduct } from "@/components/public/FeaturedProduct";
 import { ProductCard } from "@/components/public/ProductCard";
 import { ProductDetailModal } from "@/components/public/ProductDetailModal";
 import { shimaiBrand } from "@/lib/brand/shimai";
+import { buildProductPromoBadges } from "@/lib/promos/promos";
+import type { Promo } from "@/lib/promos/promos";
 import type { MenuCategory, MenuProduct } from "@/lib/menu/get-menu-data";
 import { cn } from "@/lib/utils";
 import { useCartUiStore } from "@/stores/cartUiStore";
@@ -13,6 +15,7 @@ import { useCartUiStore } from "@/stores/cartUiStore";
 type MenuViewProps = {
   categories: MenuCategory[];
   products: MenuProduct[];
+  promos?: Promo[];
 };
 
 const TAB_FADE_MS = 160;
@@ -22,7 +25,7 @@ function pieceLabel(count: number, categoryName: string): string {
   return `${count} piezas en ${categoryName}`;
 }
 
-export function MenuView({ categories, products }: MenuViewProps) {
+export function MenuView({ categories, products, promos = [] }: MenuViewProps) {
   const firstSlug = categories[0]?.slug ?? "";
   const [activeSlug, setActiveSlug] = useState(firstSlug);
   const [displayedSlug, setDisplayedSlug] = useState(firstSlug);
@@ -31,6 +34,11 @@ export function MenuView({ categories, products }: MenuViewProps) {
     null,
   );
   const drawerOpen = useCartUiStore((s) => s.drawerOpen);
+
+  const promoBadgesByProduct = useMemo(
+    () => buildProductPromoBadges(promos),
+    [promos],
+  );
   const fadeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -182,6 +190,7 @@ export function MenuView({ categories, products }: MenuViewProps) {
               <FeaturedProduct
                 product={featuredProduct}
                 accent={categoryAccent}
+                promoBadges={promoBadgesByProduct.get(featuredProduct.id) ?? []}
                 onOpenDetail={() => setSelectedProductId(featuredProduct.id)}
               />
             ) : null}
@@ -197,6 +206,7 @@ export function MenuView({ categories, products }: MenuViewProps) {
                     <ProductCard
                       product={product}
                       accent={categoryAccent}
+                      promoBadges={promoBadgesByProduct.get(product.id) ?? []}
                       onOpenDetail={() => setSelectedProductId(product.id)}
                     />
                   </div>
@@ -213,6 +223,11 @@ export function MenuView({ categories, products }: MenuViewProps) {
         products={visibleProducts}
         catalog={products}
         categories={categories}
+        promoBadges={
+          selectedProduct
+            ? (promoBadgesByProduct.get(selectedProduct.id) ?? [])
+            : []
+        }
         onClose={() => setSelectedProductId(null)}
         onNavigate={(productId) => {
           const next = products.find((p) => p.id === productId);

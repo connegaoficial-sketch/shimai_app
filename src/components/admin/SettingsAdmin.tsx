@@ -4,11 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { updateSetting } from "@/app/(admin)/admin/(panel)/settings/actions";
-import { PromosSettingsSection } from "@/components/admin/PromosSettingsSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import type {
   BankDetailsSetting,
   DeliveryConfigSetting,
@@ -16,17 +16,24 @@ import type {
   PaymentMethodsSetting,
   WhatsAppContactSetting,
 } from "@/types/database";
+import type { Json } from "@/types/database";
 import {
-  parsePromosSetting,
-  type PromosSetting,
-} from "@/lib/promos/promos";
+  WEEKDAY_OPTIONS,
+  formatHoursDetail,
+  type OrderingScheduleSetting,
+} from "@/lib/ordering/schedule";
+import {
+  toSistersStoryPayload,
+  type SistersStorySetting,
+} from "@/lib/sisters/sisters";
 
 type SettingsAdminProps = {
   paymentMethods: PaymentMethodsSetting;
   bankDetails: BankDetailsSetting;
   deliveryConfig: DeliveryConfigSetting;
   whatsappContact: WhatsAppContactSetting;
-  promos: PromosSetting;
+  orderingSchedule: OrderingScheduleSetting;
+  sistersStory: SistersStorySetting;
 };
 
 type ZoneDraft = {
@@ -46,13 +53,15 @@ export function SettingsAdmin({
   bankDetails: initialBank,
   deliveryConfig: initialDelivery,
   whatsappContact: initialWhatsApp,
-  promos: initialPromos,
+  orderingSchedule: initialOrdering,
+  sistersStory: initialSisters,
 }: SettingsAdminProps) {
   const router = useRouter();
   const [payments, setPayments] = useState(initialPayments);
   const [bank, setBank] = useState(initialBank);
   const [whatsappPhone, setWhatsappPhone] = useState(initialWhatsApp.phone);
-  const [promos, setPromos] = useState(initialPromos);
+  const [ordering, setOrdering] = useState(initialOrdering);
+  const [sistersStory, setSistersStory] = useState(initialSisters);
   const [kitchenLat, setKitchenLat] = useState(
     String(initialDelivery.kitchen_coordinates.lat),
   );
@@ -75,18 +84,20 @@ export function SettingsAdmin({
       | "bank_details"
       | "delivery_config"
       | "whatsapp_contact"
-      | "promos",
+      | "ordering_schedule"
+      | "sisters_story",
     value:
       | PaymentMethodsSetting
       | BankDetailsSetting
       | DeliveryConfigSetting
       | WhatsAppContactSetting
-      | PromosSetting,
+      | OrderingScheduleSetting
+      | Record<string, unknown>,
   ) {
     setError(null);
     setMessage(null);
     startTransition(async () => {
-      const result = await updateSetting(key, value);
+      const result = await updateSetting(key, value as Json);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -153,9 +164,207 @@ export function SettingsAdmin({
       <div>
         <h1 className="font-serif text-2xl text-shimai-ivory">Configuración</h1>
         <p className="mt-1 font-sans text-sm text-shimai-ivory/50">
-          Métodos de pago, banco, WhatsApp, promociones y zonas de envío
+          Horario de pedidos, pagos, banco, WhatsApp, historia y zonas
         </p>
       </div>
+
+      <section className="space-y-4 rounded-md border border-white/[0.08] p-4 sm:p-5">
+        <h2 className="font-sans text-sm font-medium uppercase tracking-[0.14em] text-shimai-gold">
+          Horario · días cerrados
+        </h2>
+        <p className="font-sans text-xs text-shimai-ivory/45">
+          Marca los días en que la web no acepta pedidos (hora Ciudad de
+          México). Lo que guardes aquí se refleja en la página pública: banner,
+          botones y texto de horario.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {WEEKDAY_OPTIONS.map(({ value, label }) => {
+            const checked = ordering.closed_weekdays.includes(value);
+            return (
+              <label
+                key={value}
+                className="flex cursor-pointer items-center gap-3 border border-white/[0.06] px-3 py-2.5"
+              >
+                <input
+                  type="checkbox"
+                  className="size-4 accent-shimai-gold"
+                  checked={checked}
+                  onChange={(e) => {
+                    setOrdering((prev) => {
+                      const next = e.target.checked
+                        ? [...prev.closed_weekdays, value]
+                        : prev.closed_weekdays.filter((d) => d !== value);
+                      return {
+                        ...prev,
+                        closed_weekdays: [...new Set(next)].sort(
+                          (a, b) => a - b,
+                        ),
+                      };
+                    });
+                  }}
+                />
+                <span className="font-sans text-sm text-shimai-ivory">
+                  {label}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <p className="rounded-sm border border-white/[0.06] bg-white/[0.03] px-3 py-2 font-sans text-xs leading-relaxed text-shimai-ivory/55">
+          Así se lee en la web:{" "}
+          <span className="text-shimai-ivory">
+            {formatHoursDetail(ordering.closed_weekdays)}
+          </span>
+        </p>
+        <div className="flex items-center justify-between gap-4 border-t border-white/[0.06] pt-3">
+          <div>
+            <Label htmlFor="force_closed">Cerrar pedidos ahora</Label>
+            <p className="mt-0.5 font-sans text-xs text-shimai-ivory/40">
+              Override manual, sin importar el día.
+            </p>
+          </div>
+          <Switch
+            id="force_closed"
+            checked={ordering.force_closed}
+            onCheckedChange={(checked) =>
+              setOrdering((prev) => ({ ...prev, force_closed: checked }))
+            }
+            label="Cerrar pedidos ahora"
+          />
+        </div>
+        <Button
+          disabled={pending}
+          onClick={() =>
+            save("ordering_schedule", {
+              timezone: ordering.timezone || "America/Mexico_City",
+              closed_weekdays: ordering.closed_weekdays,
+              force_closed: ordering.force_closed,
+            })
+          }
+        >
+          Guardar días cerrados
+        </Button>
+      </section>
+
+      <section className="space-y-4 rounded-md border border-white/[0.08] p-4 sm:p-5">
+        <h2 className="font-sans text-sm font-medium uppercase tracking-[0.14em] text-shimai-gold">
+          Hermanas (Ane · Imōto · Futari)
+        </h2>
+        <p className="font-sans text-xs text-shimai-ivory/45">
+          Textos de la sección pública. Los acentos de color (oro / sakura) se
+          mantienen por hermana.
+        </p>
+        <div className="space-y-2">
+          <Label htmlFor="sisters_heading">Título de la sección</Label>
+          <Input
+            id="sisters_heading"
+            value={sistersStory.heading}
+            onChange={(e) =>
+              setSistersStory((prev) => ({
+                ...prev,
+                heading: e.target.value,
+              }))
+            }
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="sisters_support">Texto de apoyo</Label>
+          <Textarea
+            id="sisters_support"
+            value={sistersStory.support}
+            onChange={(e) =>
+              setSistersStory((prev) => ({
+                ...prev,
+                support: e.target.value,
+              }))
+            }
+            rows={3}
+          />
+        </div>
+        <div className="space-y-5">
+          {sistersStory.sisters.map((sister, index) => (
+            <div
+              key={sister.key}
+              className="space-y-3 border border-white/[0.06] p-3 sm:p-4"
+            >
+              <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-shimai-gold/80">
+                {sister.key === "ane"
+                  ? "Ane"
+                  : sister.key === "imoto"
+                    ? "Imōto"
+                    : "Futari"}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor={`sister_label_${sister.key}`}>Nombre</Label>
+                  <Input
+                    id={`sister_label_${sister.key}`}
+                    value={sister.label}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSistersStory((prev) => {
+                        const sisters = [...prev.sisters];
+                        sisters[index] = {
+                          ...sisters[index]!,
+                          label: value,
+                        };
+                        return { ...prev, sisters };
+                      });
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`sister_subtitle_${sister.key}`}>
+                    Subtítulo
+                  </Label>
+                  <Input
+                    id={`sister_subtitle_${sister.key}`}
+                    value={sister.subtitle}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSistersStory((prev) => {
+                        const sisters = [...prev.sisters];
+                        sisters[index] = {
+                          ...sisters[index]!,
+                          subtitle: value,
+                        };
+                        return { ...prev, sisters };
+                      });
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`sister_desc_${sister.key}`}>Descripción</Label>
+                <Textarea
+                  id={`sister_desc_${sister.key}`}
+                  value={sister.description}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSistersStory((prev) => {
+                      const sisters = [...prev.sisters];
+                      sisters[index] = {
+                        ...sisters[index]!,
+                        description: value,
+                      };
+                      return { ...prev, sisters };
+                    });
+                  }}
+                  rows={3}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <Button
+          disabled={pending}
+          onClick={() =>
+            save("sisters_story", toSistersStoryPayload(sistersStory))
+          }
+        >
+          Guardar hermanas
+        </Button>
+      </section>
 
       <section className="space-y-4 rounded-md border border-white/[0.08] p-4 sm:p-5">
         <h2 className="font-sans text-sm font-medium uppercase tracking-[0.14em] text-shimai-gold">
@@ -273,12 +482,6 @@ export function SettingsAdmin({
         </Button>
       </section>
 
-      <PromosSettingsSection
-        promos={promos}
-        pending={pending}
-        onChange={setPromos}
-        onSave={() => save("promos", parsePromosSetting(promos))}
-      />
 
       <section className="space-y-4 rounded-md border border-white/[0.08] p-4 sm:p-5">
         <h2 className="font-sans text-sm font-medium uppercase tracking-[0.14em] text-shimai-gold">

@@ -1,4 +1,5 @@
 import { formatMxn } from "@/lib/format";
+import type { PromoBreakdownLine } from "@/lib/promos/promos";
 
 export type CheckoutSummaryLine = {
   id: string;
@@ -12,7 +13,9 @@ type CheckoutOrderSummaryProps = {
   subtotal: number;
   deliveryFee: number | null;
   discount: number;
-  promoLabel: string | null;
+  /** @deprecated Prefer promoLines for per-promo rows. */
+  promoLabel?: string | null;
+  promoLines?: PromoBreakdownLine[];
   total: number | null;
   couponInvalid?: boolean;
 };
@@ -22,10 +25,21 @@ export function CheckoutOrderSummary({
   subtotal,
   deliveryFee,
   discount,
-  promoLabel,
+  promoLabel = null,
+  promoLines = [],
   total,
   couponInvalid = false,
 }: CheckoutOrderSummaryProps) {
+  const moneyLines = promoLines.filter(
+    (line) => line.kind === "money" && (line.amount ?? 0) > 0,
+  );
+  const deliveryPromo = promoLines.find((line) => line.kind === "delivery");
+  const fallbackMoneyLabel =
+    promoLabel
+      ?.split(" · ")
+      .filter((part) => !/envío gratis/i.test(part))
+      .join(" · ") || "Descuento por promoción";
+
   return (
     <aside className="border border-white/[0.08] bg-shimai-surface/70 p-4">
       <p className="font-sans text-[10px] uppercase tracking-[0.2em] text-shimai-gold/80">
@@ -50,7 +64,11 @@ export function CheckoutOrderSummary({
       <dl className="mt-4 space-y-2 border-t border-white/[0.06] pt-3">
         <Row label="Subtotal" value={formatMxn(subtotal)} />
         <Row
-          label="Envío"
+          label={
+            deliveryFee === 0 && deliveryPromo
+              ? `Envío · ${deliveryPromo.label}`
+              : "Envío"
+          }
           value={
             deliveryFee == null
               ? "Pendiente de zona"
@@ -58,14 +76,26 @@ export function CheckoutOrderSummary({
                 ? "Gratis"
                 : formatMxn(deliveryFee)
           }
+          accent={deliveryFee === 0 && Boolean(deliveryPromo)}
         />
-        {discount > 0 ? (
-          <Row
-            label={promoLabel || "Descuento"}
-            value={`− ${formatMxn(discount)}`}
-            accent
-          />
-        ) : null}
+        {moneyLines.length > 0
+          ? moneyLines.map((line) => (
+              <Row
+                key={`${line.type}-${line.label}`}
+                label={`Promoción · ${line.label}`}
+                value={`− ${formatMxn(line.amount ?? 0)}`}
+                accent
+              />
+            ))
+          : discount > 0
+            ? (
+              <Row
+                label={`Promoción · ${fallbackMoneyLabel}`}
+                value={`− ${formatMxn(discount)}`}
+                accent
+              />
+            )
+            : null}
         {couponInvalid ? (
           <p className="font-sans text-xs text-seal-red/90">
             Ese cupón no está vigente. El total no incluye descuento.
@@ -100,12 +130,12 @@ function Row({
 }) {
   return (
     <div className="flex items-start justify-between gap-3">
-      <dt className="font-sans text-xs text-shimai-ivory/45">{label}</dt>
+      <dt className="min-w-0 font-sans text-xs text-shimai-ivory/45">{label}</dt>
       <dd
         className={
           accent
-            ? "font-sans text-sm text-shimai-gold"
-            : "font-sans text-sm text-shimai-ivory"
+            ? "shrink-0 font-sans text-sm text-shimai-gold"
+            : "shrink-0 font-sans text-sm text-shimai-ivory"
         }
       >
         {value}

@@ -1,4 +1,4 @@
-import { DriverOrdersList } from "@/components/driver/DriverOrdersList";
+import { DriverOrdersListLive } from "@/components/driver/DriverOrdersListLive";
 import { requireDriverClient } from "@/lib/driver/require-driver";
 import { redirect } from "next/navigation";
 
@@ -26,7 +26,8 @@ export default async function DriverHomePage() {
   ]);
 
   return (
-    <DriverOrdersList
+    <DriverOrdersListLive
+      driverId={gate.driverId}
       assigned={assigned ?? []}
       available={available ?? []}
     />

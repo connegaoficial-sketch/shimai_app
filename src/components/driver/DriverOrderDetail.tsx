@@ -6,13 +6,14 @@ import { useState, useTransition } from "react";
 
 import {
   markDelivered,
+  markOrderPaid,
   startDelivery,
 } from "@/app/(driver)/driver/(panel)/actions";
-import { Button } from "@/components/ui/button";
+import { SlideToConfirm } from "@/components/driver/SlideToConfirm";
 import { useDriverGpsPush } from "@/hooks/useDriverGpsPush";
 import { PAYMENT_METHOD_LABELS } from "@/lib/admin/labels";
 import { formatMxn } from "@/lib/format";
-import type { Order, OrderItem, PaymentMethod } from "@/types/database";
+import type { Order, OrderItem, PaymentMethod, PaymentStatus } from "@/types/database";
 
 type DriverOrderDetailProps = {
   order: Order;
@@ -33,6 +34,9 @@ export function DriverOrderDetail({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState(order.status);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
+    order.payment_status,
+  );
 
   const gpsActive = status === "in_transit";
   const gpsWarning = useDriverGpsPush({ orderId: order.id, active: gpsActive });
@@ -40,6 +44,9 @@ export function DriverOrderDetail({
   const collectOnDelivery =
     order.payment_method === "cash" ||
     order.payment_method === "card_terminal";
+  const needsCollection =
+    collectOnDelivery && paymentStatus === "pending" && status === "in_transit";
+  const isPaid = paymentStatus === "paid";
 
   const address =
     order.delivery_address &&
@@ -50,13 +57,16 @@ export function DriverOrderDetail({
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null);
-    startTransition(async () => {
-      const result = await action();
-      if (!result.ok) {
-        setError(result.error ?? "Error");
-        return;
-      }
-      router.refresh();
+    return new Promise<{ ok: boolean; error?: string }>((resolve) => {
+      startTransition(async () => {
+        const result = await action();
+        if (!result.ok) {
+          setError(result.error ?? "Error");
+        } else {
+          router.refresh();
+        }
+        resolve(result);
+      });
     });
   }
 
@@ -90,6 +100,11 @@ export function DriverOrderDetail({
               ? `Efectivo · ${formatMxn(Number(order.total))}`
               : `Terminal · ${formatMxn(Number(order.total))}`}
           </p>
+          {isPaid ? (
+            <p className="mt-2 font-sans text-xs font-semibold uppercase tracking-[0.12em] text-shimai-black/70">
+              Pago confirmado
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -162,36 +177,51 @@ export function DriverOrderDetail({
 
       <div className="space-y-3 pt-2">
         {status === "ready_for_pickup" ? (
-          <Button
-            className="h-16 w-full text-lg"
-            disabled={pending}
-            onClick={() =>
-              run(async () => {
-                const result = await startDelivery(order.id);
-                if (result.ok) setStatus("in_transit");
-                return result;
-              })
-            }
-          >
-            Iniciar Entrega
-          </Button>
+          <SlideToConfirm
+            label="Desliza para iniciar entrega"
+            completedLabel="Entrega iniciada"
+            pending={pending}
+            variant="gold"
+            onConfirm={async () => {
+              const result = await run(() => startDelivery(order.id));
+              if (result.ok) setStatus("in_transit");
+              if (!result.ok) throw new Error(result.error);
+            }}
+          />
         ) : null}
 
-        {status === "in_transit" ? (
-          <Button
-            className="h-16 w-full text-lg"
-            variant="sakura"
-            disabled={pending}
-            onClick={() =>
-              run(async () => {
-                const result = await markDelivered(order.id);
-                if (result.ok) setStatus("delivered");
-                return result;
-              })
+        {status === "in_transit" && needsCollection ? (
+          <SlideToConfirm
+            label={
+              order.payment_method === "cash"
+                ? "Desliza para confirmar pago en efectivo"
+                : "Desliza para confirmar pago con terminal"
             }
-          >
-            Marcar Entregado
-          </Button>
+            completedLabel="Pago confirmado"
+            pending={pending}
+            variant="gold"
+            completed={isPaid}
+            onConfirm={async () => {
+              const result = await run(() => markOrderPaid(order.id));
+              if (result.ok) setPaymentStatus("paid");
+              if (!result.ok) throw new Error(result.error);
+            }}
+          />
+        ) : null}
+
+        {status === "in_transit" &&
+        (!collectOnDelivery || isPaid) ? (
+          <SlideToConfirm
+            label="Desliza para confirmar entrega"
+            completedLabel="Entrega completada"
+            pending={pending}
+            variant="sakura"
+            onConfirm={async () => {
+              const result = await run(() => markDelivered(order.id));
+              if (result.ok) setStatus("delivered");
+              if (!result.ok) throw new Error(result.error);
+            }}
+          />
         ) : null}
 
         {status === "delivered" ? (

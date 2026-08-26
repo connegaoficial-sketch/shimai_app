@@ -29,7 +29,7 @@ type SakuraDividerProps = {
 
 /**
  * Respiro visual entre secciones — guirnalda sakura sobre negro SHIMAI.
- * Decorative only (aria-hidden).
+ * Edges dissolve with CSS mask + overlays so no hard frame lines show.
  */
 export function SakuraDivider({
   motif = "branches",
@@ -49,20 +49,37 @@ export function SakuraDivider({
         className,
       )}
     >
-      <Image
-        src={asset.src}
-        alt=""
-        fill
+      <div
         className={cn(
-          "object-cover object-center",
+          "absolute inset-0",
+          // Soft oval dissolve — kills any residual frame at the strip bounds
+          "shimai-sakura-divider-mask",
           size === "large" ? "opacity-70 sm:opacity-75" : "opacity-55 sm:opacity-65",
         )}
-        sizes="100vw"
-        priority={false}
+      >
+        <Image
+          src={asset.src}
+          alt=""
+          fill
+          className="object-cover object-center"
+          sizes="100vw"
+          priority={false}
+        />
+      </div>
+
+      {/* Deep fade into page black — taller than the strip so seams never read */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-shimai-black via-shimai-black/80 to-transparent"
       />
-      {/* Soft fade so the strip dissolves into page black */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-shimai-black to-transparent sm:h-10" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-shimai-black to-transparent sm:h-10" />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[45%] bg-gradient-to-t from-shimai-black via-shimai-black/80 to-transparent"
+      />
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 w-[12%] bg-gradient-to-r from-shimai-black to-transparent"
+      />
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 w-[12%] bg-gradient-to-l from-shimai-black to-transparent"
+      />
     </div>
   );
 }

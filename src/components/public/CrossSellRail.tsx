@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { formatMxn } from "@/lib/format";
+import { useOrderingGate } from "@/components/public/OrderingGate";
 import type { MenuProduct } from "@/lib/menu/get-menu-data";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
@@ -26,6 +27,7 @@ export function CrossSellRail({
 }: CrossSellRailProps) {
   const addItem = useCartStore((s) => s.addItem);
   const notifyAdded = useCartUiStore((s) => s.notifyAdded);
+  const { acceptingOrders } = useOrderingGate();
   const scrollerRef = useRef<HTMLUListElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
@@ -187,13 +189,15 @@ export function CrossSellRail({
               </button>
               <button
                 type="button"
+                disabled={!acceptingOrders}
                 onClick={() => {
+                  if (!acceptingOrders) return;
                   addItem(product.id, 1);
                   notifyAdded(product.name);
                 }}
-                className="h-8 w-full border border-shimai-gold/35 font-sans text-[10px] uppercase tracking-[0.14em] text-shimai-ivory transition-[transform,border-color,color] duration-150 ease-out hover:border-shimai-gold hover:text-shimai-gold active:scale-[0.97]"
+                className="h-8 w-full rounded-full border border-shimai-gold/35 font-sans text-[10px] uppercase tracking-[0.14em] text-shimai-ivory transition-[transform,border-color,color] duration-150 ease-out hover:border-shimai-gold hover:text-shimai-gold active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
               >
-                Sumar
+                {acceptingOrders ? "Sumar" : "Hoy no"}
               </button>
             </div>
           </li>

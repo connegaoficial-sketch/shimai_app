@@ -18,8 +18,11 @@ import { OUT_OF_COVERAGE_MESSAGE } from "@/lib/delivery/zones";
 import { formatMxn } from "@/lib/format";
 import type { MenuProduct } from "@/lib/menu/get-menu-data";
 import {
+  quoteCheckoutTotals,
+  type QuoteCheckoutResult,
+} from "@/lib/promos/quote-checkout";
+import {
   formatPromoValue,
-  previewCheckoutTotals,
   PROMO_CODE_STORAGE_KEY,
   type Promo,
 } from "@/lib/promos/promos";
@@ -130,6 +133,9 @@ export function CheckoutClient({
   const [rememberDetails, setRememberDetails] = useState(true);
   const [usingSavedAddress, setUsingSavedAddress] = useState(false);
   const [promoCode, setPromoCode] = useState("");
+  const [totalsQuote, setTotalsQuote] = useState<QuoteCheckoutResult | null>(
+    null,
+  );
 
   useEffect(() => {
     const saved = readSavedCheckoutProfile();
@@ -170,28 +176,77 @@ export function CheckoutClient({
     [products],
   );
 
+  const cartKey = useMemo(
+    () =>
+      items
+        .map((item) => `${item.productId}:${item.quantity}`)
+        .sort()
+        .join("|"),
+    [items],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const deliveryFee = quote.status === "ok" ? quote.deliveryFee : null;
+
+    void quoteCheckoutTotals({
+      items: items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+      promoCode,
+      deliveryFee,
+    }).then((result) => {
+      if (!cancelled) setTotalsQuote(result);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // cartKey mirrors items; avoids unstable array identity
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cartKey stands in for items
+  }, [cartKey, promoCode, quote]);
+
   const summary = useMemo(() => {
-    const lines = items.map((item) => {
+    const fallbackLines = items.map((item) => {
       const product = productMap.get(item.productId);
-      const unitPrice = product ? Number(product.price) : 0;
       return {
         id: item.productId,
         name: product?.name ?? "Producto",
         quantity: item.quantity,
-        lineTotal: unitPrice * item.quantity,
+        lineTotal: 0,
       };
     });
-    const subtotal = lines.reduce((sum, line) => sum + line.lineTotal, 0);
-    const deliveryFee = quote.status === "ok" ? quote.deliveryFee : null;
-    const preview = previewCheckoutTotals({
-      subtotal,
-      deliveryFee,
-      promos,
-      promoCode,
-    });
 
-    return { lines, subtotal, ...preview };
-  }, [items, productMap, promoCode, promos, quote]);
+    if (!totalsQuote || !totalsQuote.ok) {
+      return {
+        lines: fallbackLines,
+        subtotal: 0,
+        discount: 0,
+        deliveryFee: quote.status === "ok" ? quote.deliveryFee : null,
+        total: null,
+        promoLabel: null,
+        promoLines: [],
+        couponInvalid: false,
+      };
+    }
+
+    return {
+      lines: totalsQuote.lines.map((line) => ({
+        id: line.productId,
+        name: line.name,
+        quantity: line.quantity,
+        lineTotal: line.lineTotal,
+      })),
+      subtotal: totalsQuote.subtotal,
+      discount: totalsQuote.discount,
+      deliveryFee: totalsQuote.deliveryFee,
+      total: totalsQuote.total,
+      promoLabel: totalsQuote.promoLabel,
+      promoLines: totalsQuote.promoLines,
+      couponInvalid: totalsQuote.couponInvalid,
+    };
+  }, [items, productMap, quote, totalsQuote]);
 
   useEffect(() => {
     if (deliveryLat == null || deliveryLng == null) {
@@ -393,7 +448,7 @@ export function CheckoutClient({
   }
 
   return (
-    <div className="mx-auto w-full max-w-lg px-4 py-8 sm:py-12">
+    <div className="mx-auto w-full max-w-lg px-4 pt-1 pb-4 sm:pt-2 sm:pb-6">
       <div className="mb-8 space-y-2">
         <p className="font-sans text-[11px] uppercase tracking-[0.28em] text-shimai-gold/80">
           Checkout
@@ -441,6 +496,7 @@ export function CheckoutClient({
             deliveryFee={summary.deliveryFee}
             discount={summary.discount}
             promoLabel={summary.promoLabel}
+            promoLines={summary.promoLines}
             total={summary.total}
             couponInvalid={summary.couponInvalid}
           />
@@ -586,7 +642,8 @@ export function CheckoutClient({
             type="submit"
             variant="primary"
             size="lg"
-            className="mt-4 w-full"
+            glow
+            className="mt-4 w-full rounded-full"
             disabled={outOfCoverage || quote.status !== "ok"}
           >
             Continuar al pago

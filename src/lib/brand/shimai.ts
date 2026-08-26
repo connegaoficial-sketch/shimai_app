@@ -8,13 +8,15 @@
 export const shimaiBrand = {
   name: "SHIMAI",
   tagline: "Sushi House",
-  motto: "Por hermanas · Una historia · Un sabor",
+  motto: "Dos hermanas · Una historia · Un sabor",
   description:
     "Sushi de hermanas, a domicilio. Si no sabes qué pedir, ve por lo que más piden.",
   heroHeadline: "¿Qué se te antoja?",
   heroSupport:
     "Si no sabes, ve por lo que más piden. En unos 30 min llega a casa. Pagas como te acomode.",
   primaryCta: "Pedir ahora",
+  /** Featured / “lo más pedido” primary action */
+  featuredCta: "Lo quiero",
   /** Soft secondary lead for menu / empty states */
   undecidedLead:
     "Si no sabes por dónde empezar, ve por lo que más piden en cada grupo.",
@@ -36,7 +38,8 @@ export const shimaiBrand = {
   },
   operations: {
     hoursLabel: "10:00 – 22:00",
-    hoursDetail: "Todos los días, de 10 am a 10 pm",
+    /** Fallback only — public UI prefers OrderingStatus.hoursDetail from admin */
+    hoursDetail: "De 10 am a 10 pm",
     deliveryEstimate: "Aprox. 30 min",
     deliveryDetail: "Tiempo aproximado de entrega",
     zonesShort: "Rioverde y alrededores",
@@ -45,32 +48,6 @@ export const shimaiBrand = {
     paymentsShort: "Efectivo, terminal o transferencia",
     payments: ["Efectivo", "Terminal al entregar", "Transferencia"] as const,
   },
-  sisters: [
-    {
-      key: "ane",
-      label: "Ane",
-      subtitle: "La mayor",
-      description:
-        "Cuando se te antoja algo con más cuerpo o picante: empieza por Ane.",
-      accent: "gold" as const,
-    },
-    {
-      key: "imoto",
-      label: "Imōto",
-      subtitle: "La menor",
-      description:
-        "Cuando quieres fresco y ligero, sin pensar de más: ve a Imōto.",
-      accent: "sakura" as const,
-    },
-    {
-      key: "futari",
-      label: "Futari",
-      subtitle: "Juntas",
-      description:
-        "Cuando vas a compartir o no te decides: Futari es el atajo de la casa.",
-      accent: "gold" as const,
-    },
-  ],
 } as const;
 
-export type SisterAccent = (typeof shimaiBrand.sisters)[number]["accent"];
+export type { SisterAccent } from "@/lib/sisters/sisters";
