@@ -1,13 +1,21 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { fetchWithTimeout } from "@/lib/supabase/fetch-with-timeout";
 import type { Database } from "@/types/database";
+
+type ServiceRoleClient = SupabaseClient<Database, "shimai">;
+
+let serviceRoleClient: ServiceRoleClient | null = null;
 
 /**
  * Server-only service-role client (bypasses RLS).
  * Never import this into Client Components.
  */
-export function createServiceRoleClient() {
+export function createServiceRoleClient(): ServiceRoleClient {
+  if (serviceRoleClient) {
+    return serviceRoleClient;
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim().replace(/\r/g, "");
 
@@ -17,7 +25,7 @@ export function createServiceRoleClient() {
     );
   }
 
-  return createClient<Database, "shimai">(url, key, {
+  serviceRoleClient = createClient<Database, "shimai">(url, key, {
     db: { schema: "shimai" },
     auth: {
       persistSession: false,
@@ -28,4 +36,6 @@ export function createServiceRoleClient() {
       fetch: fetchWithTimeout,
     },
   });
+
+  return serviceRoleClient;
 }

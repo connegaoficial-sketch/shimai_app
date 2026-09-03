@@ -19,6 +19,7 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   reactStrictMode: true,
   // next-pwa injects webpack; Next 16 defaults to Turbopack in `next dev`.
   // Empty turbopack config allows local development (PWA is disabled in NODE_ENV=development).
