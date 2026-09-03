@@ -3,6 +3,8 @@
 # After first deploy, set Edge Function secrets in Supabase:
 #   SHIMAI_APP_URL = https://<this-service>.onrender.com
 #   SHIMAI_ALLOWED_ORIGINS = https://<this-service>.onrender.com
+# Push retry worker: Supabase Edge Function `push-dispatch` (pg_cron every minute).
+# Apply migration 00019_push_dispatch_cron.sql and deploy the function.
 
 services:
   - type: web
@@ -10,14 +12,14 @@ services:
     runtime: node
     region: ohio
     plan: starter
-    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci --include=dev && npm run build
-    startCommand: npm start
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci --include=dev && npm run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
+    startCommand: node .next/standalone/server.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: "22"
       - key: NODE_OPTIONS
-        value: --max-old-space-size=1536
+        value: --max-old-space-size=384
       # Keep devDependencies available during `next build` (Tailwind, TypeScript).
       - key: NPM_CONFIG_PRODUCTION
         value: "false"
@@ -49,28 +51,6 @@ services:
       - key: GOOGLE_MAPS_API_KEY
         sync: false
 
-      # Push retry worker (set same value on cron job Authorization header)
+      # Optional: manual POST /api/push/dispatch in development
       - key: CRON_SECRET
         generateValue: true
-
-  - type: cron
-    name: shimai-push-dispatch
-    runtime: node
-    region: ohio
-    plan: starter
-    schedule: "*/1 * * * *"
-    buildCommand: echo "cron"
-    startCommand: node -e "fetch(process.env.SHIMAI_APP_URL+'/api/push/dispatch',{method:'POST',headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.text()).then(console.log).catch(e=>{console.error(e);process.exit(1)})"
-    envVars:
-      - key: NODE_VERSION
-        value: "22"
-      - key: SHIMAI_APP_URL
-        fromService:
-          name: shimai
-          type: web
-          envVarKey: RENDER_EXTERNAL_URL
-      - key: CRON_SECRET
-        fromService:
-          name: shimai
-          type: web
-          envVarKey: CRON_SECRET

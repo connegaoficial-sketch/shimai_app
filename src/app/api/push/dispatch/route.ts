@@ -13,8 +13,8 @@ function authorized(request: Request): boolean {
 }
 
 /**
- * Reliable push worker (FoodCore cron equivalent).
- * Render cron → POST every minute with Authorization: Bearer CRON_SECRET
+ * Manual/dev push flush. Production cron runs on Supabase Edge Function
+ * `push-dispatch` (pg_cron every minute).
  */
 export async function POST(request: Request) {
   if (!authorized(request)) {
