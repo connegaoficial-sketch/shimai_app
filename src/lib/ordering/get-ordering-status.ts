@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createPublicServerClient } from "@/lib/supabase/public-server";
 import {
   DEFAULT_ORDERING_SCHEDULE,
   getOrderingStatus,
@@ -7,7 +7,7 @@ import {
 } from "@/lib/ordering/schedule";
 
 export async function getOrderingStatusFromDb(): Promise<OrderingStatus> {
-  const supabase = await createClient();
+  const supabase = createPublicServerClient();
   const { data, error } = await supabase
     .from("settings")
     .select("value")

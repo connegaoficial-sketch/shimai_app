@@ -12,7 +12,7 @@ services:
     runtime: node
     region: ohio
     plan: starter
-    buildCommand: NPM_CONFIG_PRODUCTION=false npm ci --include=dev && npm run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
+    buildCommand: NODE_OPTIONS=--max-old-space-size=1024 NPM_CONFIG_PRODUCTION=false npm ci --include=dev && npm run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
     startCommand: node .next/standalone/server.js
     healthCheckPath: /api/health
     envVars:

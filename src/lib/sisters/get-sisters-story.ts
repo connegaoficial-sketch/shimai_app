@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createPublicServerClient } from "@/lib/supabase/public-server";
 import {
   DEFAULT_SISTERS_STORY,
   parseSistersStory,
@@ -6,7 +6,7 @@ import {
 } from "@/lib/sisters/sisters";
 
 export async function getSistersStory(): Promise<SistersStorySetting> {
-  const supabase = await createClient();
+  const supabase = createPublicServerClient();
   const { data, error } = await supabase
     .from("settings")
     .select("value")
