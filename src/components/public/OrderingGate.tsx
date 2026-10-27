@@ -31,12 +31,17 @@ export function useOrderingGate(): OrderingStatus {
       acceptingOrders: true,
       forceClosed: false,
       isRestDay: false,
+      isOutsideHours: false,
+      isBeforeOpen: false,
+      isAfterClose: false,
       weekday: 0,
       timezone: "America/Mexico_City",
       closedWeekdays: [],
+      openTime: "12:00",
+      closeTime: "22:00",
       headline: "",
       body: "",
-      hoursDetail: "De 10 am a 10 pm",
+      hoursDetail: "De 12 pm a 10 pm",
     };
   }
   return ctx;

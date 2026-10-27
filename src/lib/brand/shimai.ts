@@ -37,9 +37,9 @@ export const shimaiBrand = {
     emblem: "/logo_shimai_2.jpeg",
   },
   operations: {
-    hoursLabel: "10:00 – 22:00",
+    hoursLabel: "12:00 – 22:00",
     /** Fallback only — public UI prefers OrderingStatus.hoursDetail from admin */
-    hoursDetail: "De 10 am a 10 pm",
+    hoursDetail: "De 12 pm a 10 pm",
     deliveryEstimate: "Aprox. 30 min",
     deliveryDetail: "Tiempo aproximado de entrega",
     zonesShort: "Rioverde y alrededores",

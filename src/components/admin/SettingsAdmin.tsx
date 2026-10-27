@@ -20,6 +20,7 @@ import type { Json } from "@/types/database";
 import {
   WEEKDAY_OPTIONS,
   formatHoursDetail,
+  formatHoursRange,
   type OrderingScheduleSetting,
 } from "@/lib/ordering/schedule";
 import {
@@ -170,57 +171,95 @@ export function SettingsAdmin({
 
       <section className="space-y-4 rounded-md border border-white/[0.08] p-4 sm:p-5">
         <h2 className="font-sans text-sm font-medium uppercase tracking-[0.14em] text-shimai-gold">
-          Horario · días cerrados
+          Horario y disponibilidad de pedidos
         </h2>
         <p className="font-sans text-xs text-shimai-ivory/45">
-          Marca los días en que la web no acepta pedidos (hora Ciudad de
-          México). Lo que guardes aquí se refleja en la página pública: banner,
-          botones y texto de horario.
+          Configura los horarios de apertura y los días en que la web no acepta
+          pedidos (hora Ciudad de México). Lo que guardes aquí se refleja en la
+          página pública: banner, botones y texto de horario.
         </p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {WEEKDAY_OPTIONS.map(({ value, label }) => {
-            const checked = ordering.closed_weekdays.includes(value);
-            return (
-              <label
-                key={value}
-                className="flex cursor-pointer items-center gap-3 border border-white/[0.06] px-3 py-2.5"
-              >
-                <input
-                  type="checkbox"
-                  className="size-4 accent-shimai-gold"
-                  checked={checked}
-                  onChange={(e) => {
-                    setOrdering((prev) => {
-                      const next = e.target.checked
-                        ? [...prev.closed_weekdays, value]
-                        : prev.closed_weekdays.filter((d) => d !== value);
-                      return {
-                        ...prev,
-                        closed_weekdays: [...new Set(next)].sort(
-                          (a, b) => a - b,
-                        ),
-                      };
-                    });
-                  }}
-                />
-                <span className="font-sans text-sm text-shimai-ivory">
-                  {label}
-                </span>
-              </label>
-            );
-          })}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="open_time">Hora de apertura</Label>
+            <Input
+              id="open_time"
+              type="time"
+              value={ordering.open_time || "12:00"}
+              onChange={(e) =>
+                setOrdering((prev) => ({ ...prev, open_time: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="close_time">Hora de cierre</Label>
+            <Input
+              id="close_time"
+              type="time"
+              value={ordering.close_time || "22:00"}
+              onChange={(e) =>
+                setOrdering((prev) => ({ ...prev, close_time: e.target.value }))
+              }
+            />
+          </div>
         </div>
+
+        <div>
+          <Label className="mb-2 block text-xs uppercase tracking-wider text-shimai-ivory/60">
+            Días de descanso (pedidos cerrados)
+          </Label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {WEEKDAY_OPTIONS.map(({ value, label }) => {
+              const checked = ordering.closed_weekdays.includes(value);
+              return (
+                <label
+                  key={value}
+                  className="flex cursor-pointer items-center gap-3 border border-white/[0.06] px-3 py-2.5"
+                >
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-shimai-gold"
+                    checked={checked}
+                    onChange={(e) => {
+                      setOrdering((prev) => {
+                        const next = e.target.checked
+                          ? [...prev.closed_weekdays, value]
+                          : prev.closed_weekdays.filter((d) => d !== value);
+                        return {
+                          ...prev,
+                          closed_weekdays: [...new Set(next)].sort(
+                            (a, b) => a - b,
+                          ),
+                        };
+                      });
+                    }}
+                  />
+                  <span className="font-sans text-sm text-shimai-ivory">
+                    {label}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
         <p className="rounded-sm border border-white/[0.06] bg-white/[0.03] px-3 py-2 font-sans text-xs leading-relaxed text-shimai-ivory/55">
           Así se lee en la web:{" "}
           <span className="text-shimai-ivory">
-            {formatHoursDetail(ordering.closed_weekdays)}
+            {formatHoursDetail(
+              ordering.closed_weekdays,
+              formatHoursRange(
+                ordering.open_time || "12:00",
+                ordering.close_time || "22:00",
+              ),
+            )}
           </span>
         </p>
         <div className="flex items-center justify-between gap-4 border-t border-white/[0.06] pt-3">
           <div>
             <Label htmlFor="force_closed">Cerrar pedidos ahora</Label>
             <p className="mt-0.5 font-sans text-xs text-shimai-ivory/40">
-              Override manual, sin importar el día.
+              Override manual, sin importar el día o la hora.
             </p>
           </div>
           <Switch
@@ -239,10 +278,12 @@ export function SettingsAdmin({
               timezone: ordering.timezone || "America/Mexico_City",
               closed_weekdays: ordering.closed_weekdays,
               force_closed: ordering.force_closed,
+              open_time: ordering.open_time || "12:00",
+              close_time: ordering.close_time || "22:00",
             })
           }
         >
-          Guardar días cerrados
+          Guardar horario y disponibilidad
         </Button>
       </section>
 

@@ -31,7 +31,7 @@ Menú narrado por dos hermanas (Ane, Imōto) y lo que crean juntas (Futari): int
 
 - Dark kitchen · entrega a domicilio.
 - Cobertura confirmada: Rioverde, Ciudad Fernández, El Refugio y alrededores (SLP).
-- Horario de cocina: 10:00–22:00.
+- Horario de cocina: 12:00–22:00.
 - Tiempo aproximado de entrega: ~30 minutos (estimado; no garantía).
 - Pagos al pedir (comunicar en landing): efectivo, terminal al entregar, transferencia.
 - Stripe / tarjeta online: **no comunicar por ahora** en la landing (puede existir en código de checkout; no es promesa pública actual).
