@@ -6,10 +6,22 @@ import type {
   Profile,
 } from "@/types/database";
 
+export type AdminOrderItemProduct = {
+  id: string;
+  name: string;
+  description: string | null;
+  is_sushi: boolean;
+  filling: string | null;
+  topping: string | null;
+  image_url: string | null;
+};
+
 export type AdminOrderItem = Pick<
   OrderItem,
   "id" | "product_id" | "quantity" | "unit_price"
->;
+> & {
+  products: AdminOrderItemProduct | null;
+};
 
 export type AdminOrder = Order & {
   profiles: Pick<Profile, "id" | "full_name" | "phone"> | null;

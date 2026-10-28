@@ -1,7 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import type { AdminOrder } from "@/lib/admin/order-types";
 
-export type { AdminOrder, AdminOrderItem } from "@/lib/admin/order-types";
+export type {
+  AdminOrder,
+  AdminOrderItem,
+  AdminOrderItemProduct,
+} from "@/lib/admin/order-types";
 export {
   canValidateBankTransfer,
   clientDisplayName,
@@ -16,7 +20,21 @@ export async function getAdminOrders(): Promise<AdminOrder[]> {
       `
       *,
       profiles!orders_client_id_fkey ( id, full_name, phone ),
-      order_items ( id, product_id, quantity, unit_price )
+      order_items (
+        id,
+        product_id,
+        quantity,
+        unit_price,
+        products (
+          id,
+          name,
+          description,
+          is_sushi,
+          filling,
+          topping,
+          image_url
+        )
+      )
     `,
     )
     .order("created_at", { ascending: false })
