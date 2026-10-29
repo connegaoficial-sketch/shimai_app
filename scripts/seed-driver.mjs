@@ -7,8 +7,8 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const EMAIL = "axius.agency@gmail.com";
-const PASSWORD = "shimai123";
-const FULL_NAME = "Repartidor Demo";
+const PASSWORD = "Shimai1";
+const FULL_NAME = "Omar Martinez";
 
 function loadEnvFile(filename) {
   const path = resolve(process.cwd(), filename);
