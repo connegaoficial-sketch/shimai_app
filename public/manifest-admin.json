@@ -1,0 +1,33 @@
+{
+  "name": "SHIMAI Administración",
+  "short_name": "SHIMAI Admin",
+  "description": "Panel de administración y cocina SHIMAI",
+  "start_url": "/admin/orders",
+  "scope": "/admin",
+  "id": "/admin",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "orientation": "any",
+  "categories": ["business", "food"],
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

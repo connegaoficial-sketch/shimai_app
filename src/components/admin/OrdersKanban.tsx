@@ -130,10 +130,15 @@ export function OrdersKanban({
       {/* Header and Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-2xl text-shimai-ivory">Pedidos</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="font-serif text-2xl text-shimai-ivory">Pedidos</h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 font-sans text-[11px] font-medium text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              En vivo · Auto 5s
+            </span>
+          </div>
           <p className="mt-1 font-sans text-sm text-shimai-ivory/50">
-            Tablero de cocina · {orders.length} recientes · Haz clic en
-            cualquier tarjeta para ver los platillos
+            Tablero de cocina · {orders.length} recientes · Actualización automática sin recargar la página
           </p>
         </div>
 

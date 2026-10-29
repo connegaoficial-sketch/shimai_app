@@ -1,4 +1,8 @@
 import type { ReactNode } from "react";
+import { adminPwaMetadata, adminPwaViewport } from "@/lib/pwa/metadata";
+
+export const metadata = adminPwaMetadata;
+export const viewport = adminPwaViewport;
 
 /**
  * Route-group shell for the admin segment.

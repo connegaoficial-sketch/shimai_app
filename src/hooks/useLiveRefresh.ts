@@ -10,7 +10,7 @@ type UseLiveRefreshOptions = {
   table: "orders" | "notifications";
   /** Optional Realtime filter, e.g. driver_id=eq.uuid */
   filter?: string;
-  /** Poll interval when tab visible (ms). Default 3000. */
+  /** Poll interval in milliseconds. Default 5000. */
   pollMs?: number;
   enabled?: boolean;
   /** Called immediately when a new row is inserted */
@@ -18,12 +18,12 @@ type UseLiveRefreshOptions = {
 };
 
 /**
- * Keeps server-rendered lists fresh: Supabase Realtime + 3s poll fallback.
+ * Keeps server-rendered lists fresh automatically: Supabase Realtime + 5s auto-poll.
  */
 export function useLiveRefresh({
   table,
   filter,
-  pollMs = 3000,
+  pollMs = 5000,
   enabled = true,
   onInsert,
 }: UseLiveRefreshOptions) {
@@ -66,8 +66,8 @@ export function useLiveRefresh({
       )
       .subscribe();
 
+    // Automatic polling every pollMs (5s default)
     const poll = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
       refresh();
     }, pollMs);
 

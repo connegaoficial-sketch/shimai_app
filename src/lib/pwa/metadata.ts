@@ -34,3 +34,23 @@ export const trackerPwaMetadata: Metadata = {
     title: "Mi pedido",
   },
 };
+
+export const adminPwaMetadata: Metadata = {
+  title: {
+    default: "SHIMAI Administración",
+    template: "%s · Admin",
+  },
+  description: "Panel de administración y cocina SHIMAI",
+  applicationName: "SHIMAI Admin",
+  manifest: "/manifest-admin.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SHIMAI Admin",
+  },
+};
+
+export const adminPwaViewport: Viewport = {
+  themeColor: "#080808",
+  colorScheme: "dark",
+};

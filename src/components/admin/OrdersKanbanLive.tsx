@@ -44,10 +44,10 @@ export function OrdersKanbanLive({ orders }: { orders: AdminOrder[] }) {
     }
   }, [orders, triggerOrderAlert, alertedOrderIdsRef]);
 
-  // Realtime instant push via Supabase channel (zero polling delay)
+  // Realtime instant push via Supabase channel (zero polling delay) + 5s auto-refresh
   useLiveRefresh({
     table: "orders",
-    pollMs: 3000,
+    pollMs: 5000,
     onInsert: (payload) => {
       const newOrder = payload.new as {
         id?: string;

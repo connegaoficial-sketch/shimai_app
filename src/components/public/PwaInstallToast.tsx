@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
-const DISMISS_KEY = "shimai-pwa-install-dismissed";
 const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
 
 type BeforeInstallPromptEvent = Event & {
@@ -29,9 +28,16 @@ function isIosSafari(): boolean {
   return iOS && webkit && !chromeIos;
 }
 
-function wasDismissedRecently(): boolean {
+function getDismissKey(pathname: string): string {
+  if (pathname.startsWith("/admin")) return "shimai-pwa-install-admin-dismissed";
+  if (pathname.startsWith("/driver")) return "shimai-pwa-install-driver-dismissed";
+  if (pathname.startsWith("/tracker")) return "shimai-pwa-install-tracker-dismissed";
+  return "shimai-pwa-install-dismissed";
+}
+
+function wasDismissedRecently(key: string): boolean {
   try {
-    const raw = localStorage.getItem(DISMISS_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return false;
     const at = Number(raw);
     if (!Number.isFinite(at)) return false;
@@ -42,6 +48,12 @@ function wasDismissedRecently(): boolean {
 }
 
 function copyForPath(pathname: string): { title: string; body: string } {
+  if (pathname.startsWith("/admin")) {
+    return {
+      title: "App de Administración",
+      body: "Cocina, pedidos y timbres directamente en tu inicio.",
+    };
+  }
   if (pathname.startsWith("/driver")) {
     return {
       title: "App de repartidor",
@@ -69,9 +81,9 @@ export function PwaInstallToast() {
   );
 
   useEffect(() => {
-    if (pathname.startsWith("/admin")) return;
     if (isStandalone()) return;
-    if (wasDismissedRecently()) return;
+    const dismissKey = getDismissKey(pathname);
+    if (wasDismissedRecently(dismissKey)) return;
 
     let cancelled = false;
     let showTimer: number | undefined;
@@ -111,7 +123,7 @@ export function PwaInstallToast() {
 
   function dismiss() {
     try {
-      localStorage.setItem(DISMISS_KEY, String(Date.now()));
+      localStorage.setItem(getDismissKey(pathname), String(Date.now()));
     } catch {
       // ignore quota / private mode
     }
