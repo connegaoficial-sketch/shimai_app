@@ -9,6 +9,7 @@ import {
   validateBankTransferPayment,
 } from "@/app/(admin)/admin/(panel)/orders/actions";
 import { Button } from "@/components/ui/button";
+import type { NewOrderAlert } from "@/hooks/useAdminOrderAlerts";
 import {
   NEXT_STATUS_ACTION,
   ORDER_STATUS_COLUMNS,
@@ -26,8 +27,15 @@ import { formatMxn } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { OrderStatus } from "@/types/database";
 
-type OrdersKanbanProps = {
+export type OrdersKanbanProps = {
   orders: AdminOrder[];
+  alert?: NewOrderAlert | null;
+  onDismissAlert?: () => void;
+  soundEnabled?: boolean;
+  onToggleSound?: () => void;
+  onTestChime?: () => void;
+  notificationPermission?: NotificationPermission;
+  onRequestNotificationPermission?: () => void;
 };
 
 function formatDeliveryAddress(address: unknown): string | null {
@@ -46,7 +54,16 @@ function formatDeliveryAddress(address: unknown): string | null {
   return null;
 }
 
-export function OrdersKanban({ orders }: OrdersKanbanProps) {
+export function OrdersKanban({
+  orders,
+  alert,
+  onDismissAlert,
+  soundEnabled = true,
+  onToggleSound,
+  onTestChime,
+  notificationPermission,
+  onRequestNotificationPermission,
+}: OrdersKanbanProps) {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   const selectedOrder =
@@ -59,14 +76,124 @@ export function OrdersKanban({ orders }: OrdersKanbanProps) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="font-serif text-2xl text-shimai-ivory">Pedidos</h1>
-        <p className="mt-1 font-sans text-sm text-shimai-ivory/50">
-          Tablero de cocina · {orders.length} recientes · Haz clic en cualquier
-          tarjeta para ver los platillos y detalles
-        </p>
+      {/* Alert Banner for New Incoming Order */}
+      {alert ? (
+        <div className="relative flex flex-wrap items-center justify-between gap-3 rounded-lg border border-shimai-gold/50 bg-gradient-to-r from-shimai-surface via-shimai-black to-shimai-surface p-4 text-shimai-ivory shadow-xl shadow-black/80 ring-1 ring-shimai-gold/40 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-shimai-gold/20 text-2xl text-shimai-gold border border-shimai-gold/40 animate-bounce">
+              🔔
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-sans text-xs font-bold uppercase tracking-wider text-shimai-gold">
+                  ¡Nuevo Pedido en Cocina!
+                </span>
+                <span className="font-mono text-xs text-shimai-ivory/60">
+                  #{alert.orderId.slice(0, 8).toUpperCase()}
+                </span>
+              </div>
+              <p className="mt-0.5 font-sans text-sm text-shimai-ivory">
+                <strong className="text-white font-medium">
+                  {alert.clientName}
+                </strong>{" "}
+                ·{" "}
+                <span className="text-shimai-gold font-semibold">
+                  {formatMxn(alert.total)}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                setSelectedOrderId(alert.orderId);
+                onDismissAlert?.();
+              }}
+              className="bg-shimai-gold text-shimai-black hover:bg-shimai-gold/90 font-semibold shadow-md"
+            >
+              Ver platillos del pedido →
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onDismissAlert}
+              className="border-white/[0.15] text-shimai-ivory/70 hover:text-shimai-ivory"
+            >
+              Descartar
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Header and Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-serif text-2xl text-shimai-ivory">Pedidos</h1>
+          <p className="mt-1 font-sans text-sm text-shimai-ivory/50">
+            Tablero de cocina · {orders.length} recientes · Haz clic en
+            cualquier tarjeta para ver los platillos
+          </p>
+        </div>
+
+        {/* Audio & Notification Controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          {onToggleSound ? (
+            <button
+              type="button"
+              onClick={onToggleSound}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 font-sans text-xs transition-colors",
+                soundEnabled
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                  : "border-white/[0.1] bg-white/[0.04] text-shimai-ivory/50 hover:bg-white/[0.08]",
+              )}
+              title={
+                soundEnabled
+                  ? "Timbre de cocina activado (clic para silenciar)"
+                  : "Timbre silenciado (clic para activar)"
+              }
+            >
+              <span>{soundEnabled ? "🔔" : "🔕"}</span>
+              <span className="font-medium">
+                {soundEnabled ? "Timbre activo" : "Silenciado"}
+              </span>
+            </button>
+          ) : null}
+
+          {onTestChime ? (
+            <button
+              type="button"
+              onClick={onTestChime}
+              className="flex items-center gap-1 rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-1.5 font-sans text-xs text-shimai-ivory/70 hover:bg-white/[0.08] hover:text-shimai-ivory transition-colors"
+              title="Probar sonido y desbloquear audio en este navegador"
+            >
+              <span>🔊</span>
+              <span>Probar</span>
+            </button>
+          ) : null}
+
+          {onRequestNotificationPermission &&
+          notificationPermission !== "granted" ? (
+            <button
+              type="button"
+              onClick={onRequestNotificationPermission}
+              className="flex items-center gap-1.5 rounded-md border border-shimai-gold/40 bg-shimai-gold/10 px-2.5 py-1.5 font-sans text-xs text-shimai-gold hover:bg-shimai-gold/20 transition-colors"
+              title="Recibir notificaciones si la pantalla se bloquea o cambias de pestaña"
+            >
+              <span>📲</span>
+              <span>Activar avisos en segundo plano</span>
+            </button>
+          ) : notificationPermission === "granted" ? (
+            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-emerald-400/90 px-2 py-1 bg-emerald-500/10 rounded border border-emerald-500/20">
+              <span>✓</span> Avisos segundo plano activos
+            </span>
+          ) : null}
+        </div>
       </div>
 
+      {/* Kanban Columns */}
       <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-4 [-webkit-overflow-scrolling:touch]">
         {columns.map((column) => (
           <section

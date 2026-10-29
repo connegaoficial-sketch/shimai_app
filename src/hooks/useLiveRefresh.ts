@@ -13,6 +13,8 @@ type UseLiveRefreshOptions = {
   /** Poll interval when tab visible (ms). Default 3000. */
   pollMs?: number;
   enabled?: boolean;
+  /** Called immediately when a new row is inserted */
+  onInsert?: (payload: { new: Record<string, unknown> }) => void;
 };
 
 /**
@@ -23,9 +25,15 @@ export function useLiveRefresh({
   filter,
   pollMs = 3000,
   enabled = true,
+  onInsert,
 }: UseLiveRefreshOptions) {
   const router = useRouter();
   const lastRefresh = useRef(0);
+  const onInsertRef = useRef(onInsert);
+
+  useEffect(() => {
+    onInsertRef.current = onInsert;
+  }, [onInsert]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -49,7 +57,12 @@ export function useLiveRefresh({
           table,
           ...(filter ? { filter } : {}),
         },
-        () => refresh(),
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            onInsertRef.current?.(payload as unknown as { new: Record<string, unknown> });
+          }
+          refresh();
+        },
       )
       .subscribe();
 
