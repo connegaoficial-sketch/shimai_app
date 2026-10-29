@@ -1,32 +1,64 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { OrdersKanban } from "@/components/admin/OrdersKanban";
 import { useAdminOrderAlerts } from "@/hooks/useAdminOrderAlerts";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
+import { usePushSubscribe } from "@/hooks/usePushSubscribe";
 import type { AdminOrder } from "@/lib/admin/order-types";
 
 export function OrdersKanbanLive({ orders }: { orders: AdminOrder[] }) {
   const {
     soundEnabled,
-    notificationPermission,
     alert,
     toggleSound,
     testChime,
-    requestNotificationPermission,
     triggerOrderAlert,
     dismissAlert,
     alertedOrderIdsRef,
   } = useAdminOrderAlerts();
 
+  const {
+    permission: pushPermission,
+    subscribed: pushSubscribed,
+    requestPermission: requestPushPermission,
+  } = usePushSubscribe({ audience: "admin", promptAfterMs: 1500 });
+
   const isInitialMountRef = useRef(true);
 
-  // Seed existing order IDs on mount so we never alert on page reload for existing orders
+  // Initial check: if there is any active pending/preparing order created recently (<15m),
+  // alert the admin so they don't miss it even if they opened the app after it was placed!
   useEffect(() => {
     if (isInitialMountRef.current) {
+      const now = Date.now();
+      const recentActiveOrder = orders.find((o) => {
+        const isActive =
+          o.status === "pending_payment" ||
+          o.status === "confirmed" ||
+          o.status === "preparing";
+        const ageMs = now - new Date(o.created_at).getTime();
+        return isActive && ageMs < 15 * 60 * 1000;
+      });
+
       for (const order of orders) {
+        if (recentActiveOrder && order.id === recentActiveOrder.id) {
+          continue; // Will trigger alert below
+        }
         alertedOrderIdsRef.current.add(order.id);
       }
+
+      if (recentActiveOrder) {
+        triggerOrderAlert({
+          id: recentActiveOrder.id,
+          clientName: recentActiveOrder.client_phone || "Cliente invitado",
+          total: Number(recentActiveOrder.total) || 0,
+          itemCount: recentActiveOrder.order_items.reduce(
+            (s, i) => s + i.quantity,
+            0,
+          ),
+        });
+      }
+
       isInitialMountRef.current = false;
       return;
     }
@@ -64,6 +96,28 @@ export function OrdersKanbanLive({ orders }: { orders: AdminOrder[] }) {
     },
   });
 
+  async function handleTestPush(): Promise<{
+    ok: boolean;
+    sent?: number;
+    failed?: number;
+  }> {
+    try {
+      const res = await fetch("/api/push/test-admin", { method: "POST" });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        sent?: number;
+        failed?: number;
+      };
+      return {
+        ok: Boolean(data.ok && (data.sent ?? 0) > 0),
+        sent: data.sent,
+        failed: data.failed,
+      };
+    } catch {
+      return { ok: false };
+    }
+  }
+
   return (
     <OrdersKanban
       orders={orders}
@@ -72,8 +126,10 @@ export function OrdersKanbanLive({ orders }: { orders: AdminOrder[] }) {
       soundEnabled={soundEnabled}
       onToggleSound={toggleSound}
       onTestChime={testChime}
-      notificationPermission={notificationPermission}
-      onRequestNotificationPermission={requestNotificationPermission}
+      pushSubscribed={pushSubscribed}
+      pushPermission={pushPermission}
+      onEnablePush={requestPushPermission}
+      onTestPush={handleTestPush}
     />
   );
 }

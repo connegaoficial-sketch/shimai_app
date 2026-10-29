@@ -410,6 +410,17 @@ export function CheckoutClient({
       saveProfileForNextOrder();
       clearCart();
 
+      // Immediate Web Push notification to kitchen/admin devices
+      void fetch("/api/push/admin-notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: result.order_id,
+          clientName: fullName.trim(),
+          total: result.total,
+        }),
+      }).catch(() => {});
+
       if (method === "card_online" && result.checkout_url) {
         window.location.href = result.checkout_url;
         return;

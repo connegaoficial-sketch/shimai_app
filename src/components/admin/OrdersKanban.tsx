@@ -34,8 +34,10 @@ export type OrdersKanbanProps = {
   soundEnabled?: boolean;
   onToggleSound?: () => void;
   onTestChime?: () => void;
-  notificationPermission?: NotificationPermission;
-  onRequestNotificationPermission?: () => void;
+  pushSubscribed?: boolean;
+  pushPermission?: NotificationPermission;
+  onEnablePush?: () => Promise<boolean>;
+  onTestPush?: () => Promise<{ ok: boolean; sent?: number; failed?: number }>;
 };
 
 function formatDeliveryAddress(address: unknown): string | null {
@@ -61,10 +63,37 @@ export function OrdersKanban({
   soundEnabled = true,
   onToggleSound,
   onTestChime,
-  notificationPermission,
-  onRequestNotificationPermission,
+  pushSubscribed = false,
+  pushPermission = "default",
+  onEnablePush,
+  onTestPush,
 }: OrdersKanbanProps) {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [testPushLoading, setTestPushLoading] = useState(false);
+  const [testPushMessage, setTestPushMessage] = useState<string | null>(null);
+
+  async function handleTestPush() {
+    if (!onTestPush) return;
+    setTestPushLoading(true);
+    setTestPushMessage(null);
+    try {
+      const res = await onTestPush();
+      if (res.ok) {
+        setTestPushMessage(
+          "✓ Notificación enviada. Bloquea tu pantalla o minimiza la app para verla.",
+        );
+      } else {
+        setTestPushMessage(
+          "No hay dispositivos suscritos. Pulsa 'Activar Push' primero.",
+        );
+      }
+    } catch {
+      setTestPushMessage("Error al enviar prueba.");
+    } finally {
+      setTestPushLoading(false);
+      window.setTimeout(() => setTestPushMessage(null), 8000);
+    }
+  }
 
   const selectedOrder =
     orders.find((order) => order.id === selectedOrderId) ?? null;
@@ -179,24 +208,67 @@ export function OrdersKanban({
             </button>
           ) : null}
 
-          {onRequestNotificationPermission &&
-          notificationPermission !== "granted" ? (
+          {onEnablePush && !pushSubscribed ? (
             <button
               type="button"
-              onClick={onRequestNotificationPermission}
-              className="flex items-center gap-1.5 rounded-md border border-shimai-gold/40 bg-shimai-gold/10 px-2.5 py-1.5 font-sans text-xs text-shimai-gold hover:bg-shimai-gold/20 transition-colors"
-              title="Recibir notificaciones si la pantalla se bloquea o cambias de pestaña"
+              onClick={() => void onEnablePush()}
+              className="flex items-center gap-1.5 rounded-md border border-shimai-gold bg-shimai-gold px-2.5 py-1.5 font-sans text-xs font-semibold text-shimai-black hover:bg-shimai-gold/90 transition-colors shadow-sm"
+              title="Activar notificaciones push para recibir pedidos con la pantalla bloqueada"
             >
               <span>📲</span>
-              <span>Activar avisos en segundo plano</span>
+              <span>Activar Push en Celular</span>
             </button>
-          ) : notificationPermission === "granted" ? (
-            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-emerald-400/90 px-2 py-1 bg-emerald-500/10 rounded border border-emerald-500/20">
-              <span>✓</span> Avisos segundo plano activos
-            </span>
+          ) : pushSubscribed ? (
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-medium px-2 py-1 bg-emerald-500/10 rounded border border-emerald-500/25">
+                <span>✓</span> Push celular activo
+              </span>
+              {onTestPush ? (
+                <button
+                  type="button"
+                  onClick={() => void handleTestPush()}
+                  disabled={testPushLoading}
+                  className="flex items-center gap-1 rounded-md border border-white/[0.12] bg-white/[0.04] px-2 py-1 font-sans text-[11px] text-shimai-ivory/80 hover:bg-white/[0.08] hover:text-white transition-colors"
+                  title="Enviar una notificación push real a este teléfono para probar la pantalla bloqueada"
+                >
+                  <span>{testPushLoading ? "Enviando…" : "📲 Probar Push"}</span>
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
+
+      {/* Push status alert toast message */}
+      {testPushMessage ? (
+        <div className="rounded border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 font-sans text-xs text-emerald-300 animate-in fade-in">
+          {testPushMessage}
+        </div>
+      ) : null}
+
+      {/* Callout if push is not enabled */}
+      {!pushSubscribed && pushPermission !== "granted" && onEnablePush ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-shimai-gold/40 bg-shimai-gold/10 p-3.5 text-xs text-shimai-ivory">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📲</span>
+            <div>
+              <p className="font-semibold text-shimai-gold text-sm">
+                Recibe avisos de pedidos con la pantalla bloqueada
+              </p>
+              <p className="text-xs text-shimai-ivory/70 mt-0.5">
+                Para que tu teléfono vibre y te avise aunque tengas la app cerrada o el teléfono en el bolsillo, activa las notificaciones push.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => void onEnablePush()}
+            className="bg-shimai-gold text-shimai-black hover:bg-shimai-gold/90 font-semibold"
+          >
+            Activar Notificaciones Push
+          </Button>
+        </div>
+      ) : null}
 
       {/* Kanban Columns */}
       <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-4 [-webkit-overflow-scrolling:touch]">

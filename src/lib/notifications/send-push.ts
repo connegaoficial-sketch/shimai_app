@@ -78,6 +78,10 @@ export async function sendWebPushToSubscriptions(
             .from("client_push_subscriptions")
             .delete()
             .eq("endpoint", sub.endpoint);
+          await service
+            .from("admin_push_subscriptions")
+            .delete()
+            .eq("endpoint", sub.endpoint);
         }
       }
     }),
@@ -112,4 +116,15 @@ export async function sendClientPush(
 
   const result = await sendWebPushToSubscriptions(data ?? [], payload);
   return result.sent;
+}
+
+export async function sendAdminPush(
+  payload: NotificationPayload,
+): Promise<{ sent: number; failed: number }> {
+  const service = createServiceRoleClient();
+  const { data } = await service
+    .from("admin_push_subscriptions")
+    .select("endpoint, p256dh, auth");
+
+  return sendWebPushToSubscriptions(data ?? [], payload);
 }

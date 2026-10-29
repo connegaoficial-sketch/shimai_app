@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-type PushAudience = "driver" | "client";
+export type PushAudience = "driver" | "client" | "admin";
 
 type UsePushSubscribeOptions = {
   audience: PushAudience;
@@ -104,6 +104,13 @@ export function usePushSubscribe({
     }, promptAfterMs);
     return () => window.clearTimeout(t);
   }, [permission, promptAfterMs, requestPermission]);
+
+  // If permission is already granted, ensure subscription is synced with server
+  useEffect(() => {
+    if (permission === "granted" && !subscribed && !pending) {
+      void subscribe();
+    }
+  }, [permission, subscribed, pending, subscribe]);
 
   return {
     permission,
