@@ -13,7 +13,7 @@ export async function getDriverProfile(): Promise<Profile | null> {
     .from("profiles")
     .select("*")
     .eq("id", userId)
-    .eq("role", "driver")
+    .in("role", ["driver", "admin"])
     .maybeSingle();
 
   return data;

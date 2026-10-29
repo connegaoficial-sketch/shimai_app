@@ -81,7 +81,8 @@ export async function updateSession(request: NextRequest) {
     .maybeSingle();
 
   const role = (profile?.role ?? null) as UserRole | null;
-  const allowed = role === gate;
+  // Admin has supervisor access across both /admin and /driver
+  const allowed = role === gate || (role === "admin" && gate === "driver");
 
   if (isLoginPath) {
     if (allowed) {
@@ -94,10 +95,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (!allowed) {
-    const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = "/";
-    homeUrl.search = "";
-    return NextResponse.redirect(homeUrl);
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = loginPath;
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return supabaseResponse;

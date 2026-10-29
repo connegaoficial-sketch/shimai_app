@@ -18,7 +18,7 @@ export async function requireDriverClient(): Promise<DriverGate> {
     .eq("id", userId)
     .maybeSingle();
 
-  if (profile?.role !== "driver") {
+  if (profile?.role !== "driver" && profile?.role !== "admin") {
     return { ok: false, error: "Sin permiso de repartidor." };
   }
 
